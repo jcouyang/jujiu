@@ -1,12 +1,15 @@
 package us.oyanglul.jujiu
 import cats._
 import cats.data.Kleisli
-import cats.effect.{Async, Sync}
+import cats.effect.{ Async, Effect, IO, Sync }
 import cats.syntax.traverse._
 import cats.syntax.parallel._
-import scala.compat.java8.FutureConverters.{toScala}
+import java.util.concurrent.Executor
+import scala.compat.java8.FutureConverters.{toScala, toJava => toJavaFuture}
+import scala.compat.java8.DurationConverters.toJava
 import com.github.benmanes.caffeine.cache.{Cache => CCache, AsyncLoadingCache => CALCache, LoadingCache => CLCache}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Promise }
+import scala.concurrent.duration._
 import scala.util._
 
 trait CaffeineCache[F[_], K, V] extends Cache[F, CCache[K, V], K, V] {
@@ -61,6 +64,55 @@ trait LoadingCache[F[_], S, K, V] {
 
 trait AsyncLoadingCache[F[_], S, K, V] {
   def fetch(k: K)(implicit M: Async[F]): Kleisli[F, S, V]
-  def fetchAll[L[_]: Traverse, G[_]: Applicative](keys: L[K])(implicit M: Async[F], ev: Parallel[F, G]) =
+  def fetchAll[L[_]: Traverse, G[_]](keys: L[K])(implicit M: Async[F], ev: Parallel[F, G]) =
     keys.parTraverse(fetch)
+}
+
+case class CaffeineConfig(
+  expireAfter: Option[FiniteDuration] = None,
+  expireAfterAccess: Option[FiniteDuration] = None,
+  expireAfterWrite: Option[FiniteDuration] = None,
+  initialCapacity: Option[Int] = None,
+  maximumSize: Option[Long] = None,
+  maximumWeight: Option[Long] = None,
+  refreshAfterWrite: Option[FiniteDuration] = None,
+)
+trait CaffeineSyntax {
+    import com.github.benmanes.caffeine.cache
+  import com.github.benmanes.caffeine.cache._
+  implicit class CaffeineWrapper[K, V](caf: Caffeine[K,V]) {
+    def expireAfterAccess(duration: FiniteDuration) =
+      caf.expireAfterAccess(toJava(duration))
+    def expireAfterWrite(duration: FiniteDuration) =
+      caf.expireAfterWrite(toJava(duration))
+    def refreshAfterWrite(duration: FiniteDuration) =
+      caf.refreshAfterWrite(toJava(duration))
+    def expireAfter[KK <: K, VV <: V](
+     create: (K, V) => FiniteDuration,
+      update: (K, V, FiniteDuration) => FiniteDuration,
+      read: (K, V, FiniteDuration) => FiniteDuration
+    ): Caffeine[K, V] = caf.expireAfter(new Expiry[K, V] {
+      override def expireAfterCreate(key: K, value: V, currentTime: Long): Long =
+        create(key, value).toNanos
+
+      override def expireAfterUpdate(key: K, value: V, currentTime: Long, currentDuration: Long): Long =
+        update(key, value, currentDuration.nanos).toNanos
+
+      override def expireAfterRead(key: K, value: V, currentTime: Long, currentDuration: Long): Long =
+        read(key, value, currentDuration.nanos).toNanos
+    })
+
+    def async[F[_]: Effect, KK <: K, VV <: V](load: KK => F[VV]): cache.AsyncLoadingCache[KK, VV] = {
+      caf.buildAsync(new AsyncCacheLoader[KK, VV] {
+        def asyncLoad(key: KK, executor: Executor) = {
+          val p = Promise[VV]
+          Effect[F].runAsync(load(key)) {
+            case Right(v) => IO(p.success(v))
+            case Left(e) => IO(p.failure(e))
+          }.unsafeRunSync()
+          toJavaFuture(p.future).toCompletableFuture()
+        }
+      })
+    }
+  }
 }
