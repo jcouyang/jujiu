@@ -1,40 +1,30 @@
 package us.oyanglul.jujiu
 import cats.effect.IO
 import com.github.benmanes.caffeine.cache
-import com.github.benmanes.caffeine.cache.Caffeine
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.commands.Commands
+
 import scala.collection.Map
 import scala.util.{Success, Try}
 import syntax.caffeine._
 import Arbitrary._
 import cats.instances.all._
 
+import scala.concurrent.ExecutionContext
+
 object StateMachineSpec extends org.scalacheck.Properties("Jujiu StateMachine") {
 
   property("Caffeine sync cache") = new CaffeineCacheSpec[Int, Int].property()
+  property("Caffeine async cache") = new CaffeineAsyncCacheSpec[Int, Int].property()
 
 }
-
-class CaffeineCacheSpec[K: Arbitrary, V: Arbitrary] extends Commands {
-  type State = Map[K, V]
-
-  type Sut = cache.Cache[K, V]
-  object dsl extends CaffeineCache[IO, K, V]
-  val caffeine = Caffeine
-    .newBuilder()
-    .build()
-
-  def initialPreCondition(state: State): Boolean = true
-  def genInitialState: Gen[State] = Map[K, V]()
+class CaffeineCacheSpec[K: Arbitrary, V : Arbitrary] extends CaffeineCacheBaseSpec[K,V] {
+  type Subject[A, B] = cache.Cache[A, B]
+  val dsl: Cache[IO, Subject, K, V] = new CaffeineCache[IO, K, V] {}
   def newSut(state: State): Sut =
-    Caffeine
-      .newBuilder()
+    Caffeine()
       .sync
-
-  def canCreateNewSut(newState: State, initSuts: Traversable[State], runningSuts: Traversable[Sut]): Boolean = true
   def destroySut(sut: Sut): Unit = sut.cleanUp()
-
   def genCommand(state: State): Gen[Command] =
     Gen.oneOf(
       genFetch,
@@ -42,6 +32,23 @@ class CaffeineCacheSpec[K: Arbitrary, V: Arbitrary] extends Commands {
       genFetchOr,
       genClear
     )
+}
+
+abstract class CaffeineCacheBaseSpec[K :Arbitrary, V : Arbitrary] extends Commands {
+  type State = Map[K, V]
+
+  type Sut = Subject[K, V]
+
+  type Subject[A, B]
+  val dsl: Cache[IO, Subject, K, V]
+
+  def initialPreCondition(state: State): Boolean = true
+  def genInitialState: Gen[State] = Map[K, V]()
+  def newSut(state: State): Sut
+  def canCreateNewSut(newState: State, initSuts: Traversable[State], runningSuts: Traversable[Sut]): Boolean = true
+  def destroySut(sut: Sut): Unit
+
+  def genCommand(state: State): Gen[Command]
 
   def genFetch = arbitrary[K].map(Fetch)
   def genFetchAll = arbitrary[List[K]].map(FetchAll)
@@ -104,4 +111,22 @@ class CaffeineCacheSpec[K: Arbitrary, V: Arbitrary] extends Commands {
       result == Success(keys.map(state.get(_)))
   }
 
+}
+
+class CaffeineAsyncCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBaseSpec[K, V] {
+  type Subject[A, B] = cache.AsyncCache[A, B]
+  val dsl: Cache[IO, Subject, K, V] = new CaffeineAsyncCache[IO, K, V] {
+    implicit val executionContext = ExecutionContext.global
+  }
+  def newSut(state: State): Sut =
+    Caffeine()
+      .async
+
+  def genCommand(state: State): Gen[Command] =
+    Gen.oneOf(
+      genFetch,
+      genPut,
+      genFetchOr
+    )
+  def destroySut(sut: Sut): Unit = (())
 }
