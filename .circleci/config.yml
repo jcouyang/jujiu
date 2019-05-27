@@ -21,4 +21,6 @@ jobs:
             - ~/.ivy2
           key: v1-dependencies--{{ checksum "build.sbt" }}
 
-      - run: cat /dev/null | sbt test:test
+      - run: sbt coverage test:test coverageReport
+      - store_test_results:
+          path: target
