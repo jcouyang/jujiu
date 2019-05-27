@@ -1,30 +1,44 @@
 package us.oyanglul.jujiu
 
+import java.util.concurrent.CompletableFuture
+
 import cats.data.Kleisli
 import cats.effect.{Async, Sync}
-import com.github.benmanes.caffeine.cache.{
-  AsyncLoadingCache => CALCache,
-  LoadingCache => CLCache,
-  Cache => CCache}
+import com.github.benmanes.caffeine.cache.{AsyncCache => CACache, AsyncLoadingCache => CALCache, Cache => CCache, LoadingCache => CLCache}
 
 import scala.compat.java8.FutureConverters.toScala
 import scala.concurrent.ExecutionContext
 import scala.util._
 
-trait CaffeineCache[F[_], K, V] extends Cache[F, CCache[K, V], K, V] {
-  type Ops[A] = Kleisli[F, CCache[K, V], A]
-
-  def put(k: K, v: V)(implicit M: Sync[F]): Ops[Unit] =
+trait CaffeineCache[F[_], K, V] extends Cache[F, CCache, K, V] {
+  def put(k: K, v: V)(implicit M: Async[F]): Kleisli[F, CCache[K, V], Unit] =
     Kleisli { caffeine =>
       M.delay(caffeine.put(k, v))
     }
-  def fetch(k: K)(implicit M: Sync[F]): Ops[Option[V]] =
+  def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CCache[K, V], Option[V]] =
     Kleisli(caffeine => M.delay(Option(caffeine.getIfPresent(k))))
-  def clear(k: K)(implicit M: Sync[F]): Ops[Unit] =
+  def clear(k: K)(implicit M: Async[F]): Kleisli[F, CCache[K, V], Unit] =
     Kleisli(caffeine => M.delay(caffeine.invalidate(k)))
 }
 
-trait CaffeineAsyncLoadingCache[F[_], K, V] extends AsyncLoadingCache[F, CALCache[K, V], K, V] {
+trait CaffeineAsyncCache[F[_], K, V] extends Cache[F, CACache, K, V] {
+  implicit val executionContext: ExecutionContext
+  def put(k: K, v: V)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
+    Kleisli { caffeine =>
+      M.delay(caffeine.put(k, CompletableFuture.completedFuture(v)))
+    }
+  def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Option[V]] =
+    Kleisli(caffeine => M.async{cb =>
+      toScala(caffeine.getIfPresent(k)).onComplete {
+        case Success(v) => cb(Right(Some(v)))
+        case Failure(_) => cb(Right(None))
+      }
+    })
+  def clear(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
+    ???
+}
+
+trait CaffeineAsyncLoadingCache[F[_], K, V] extends AsyncLoadingCache[F, CALCache, K, V] {
   implicit val executionContext: ExecutionContext
   override def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CALCache[K, V], V] =
     Kleisli { caffeine =>
@@ -37,7 +51,7 @@ trait CaffeineAsyncLoadingCache[F[_], K, V] extends AsyncLoadingCache[F, CALCach
       }
     }
 }
-trait CaffeineLoadingCache[F[_], K, V] extends LoadingCache[F, CLCache[K, V], K, V] {
-  override def fetch(k: K)(implicit M: Sync[F]): Kleisli[F, CLCache[K, V], V] =
+trait CaffeineLoadingCache[F[_], K, V] extends LoadingCache[F, CLCache, K, V] {
+  def fetch(k: K)(implicit M: Sync[F]): Kleisli[F, CLCache[K, V], V] =
     Kleisli(caffeine => M.delay(caffeine.get(k)))
 }
