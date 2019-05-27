@@ -14,7 +14,7 @@ import cats.effect._
 trait CaffeineSyntax {
   import com.github.benmanes.caffeine.cache
   import com.github.benmanes.caffeine.cache._
-  implicit class CaffeineWrapper[K, V](caf: Caffeine[K,V]) {
+  implicit class CaffeineWrapper[K, V](caf: Caffeine[K, V]) {
     def expireAfterAccess(duration: FiniteDuration): Caffeine[K, V] =
       caf.expireAfterAccess(toJava(duration))
     def expireAfterWrite(duration: FiniteDuration): Caffeine[K, V] =
@@ -22,36 +22,40 @@ trait CaffeineSyntax {
     def refreshAfterWrite(duration: FiniteDuration): Caffeine[K, V] =
       caf.refreshAfterWrite(toJava(duration))
     def expire[KK <: K, VV <: V](
-                                       afterCreate: (KK, VV) => FiniteDuration,
-                                       afterUpdate: (KK, VV, FiniteDuration) => FiniteDuration,
-                                       afterRead: (KK, VV, FiniteDuration) => FiniteDuration
-                                     ): Caffeine[KK, VV] = caf.expireAfter(new Expiry[KK, VV] {
-      override def expireAfterCreate(key: KK, value: VV, currentTime: Long): Long =
-        afterCreate(key, value).toNanos
+      afterCreate: (KK, VV) => FiniteDuration,
+      afterUpdate: (KK, VV, FiniteDuration) => FiniteDuration,
+      afterRead: (KK, VV, FiniteDuration) => FiniteDuration
+    ): Caffeine[KK, VV] =
+      caf.expireAfter(new Expiry[KK, VV] {
+        override def expireAfterCreate(key: KK, value: VV, currentTime: Long): Long =
+          afterCreate(key, value).toNanos
 
-      override def expireAfterUpdate(key: KK, value: VV, currentTime: Long, currentDuration: Long): Long =
-        afterUpdate(key, value, currentDuration.nanos).toNanos
+        override def expireAfterUpdate(key: KK, value: VV, currentTime: Long, currentDuration: Long): Long =
+          afterUpdate(key, value, currentDuration.nanos).toNanos
 
-      override def expireAfterRead(key: KK, value: VV, currentTime: Long, currentDuration: Long): Long =
-        afterRead(key, value, currentDuration.nanos).toNanos
-    })
+        override def expireAfterRead(key: KK, value: VV, currentTime: Long, currentDuration: Long): Long =
+          afterRead(key, value, currentDuration.nanos).toNanos
+      })
 
-    def executionContext(ec: ExecutionContext): Caffeine[K, V] = caf.executor(new Executor {
-      def execute(r: Runnable) = {
-        ec.execute(r)
-      }
-    })
-    def async[F[_]: Effect, KK <: K, VV <: V](load: KK => F[VV]): cache.AsyncLoadingCache[KK, VV] = {
+    def executionContext(ec: ExecutionContext): Caffeine[K, V] =
+      caf.executor(new Executor {
+        def execute(r: Runnable) =
+          ec.execute(r)
+      })
+    def sync[KK, VV]: cache.Cache[KK, VV] =
+      caf.build().asInstanceOf[cache.Cache[KK, VV]]
+    def async[F[_]: Effect, KK <: K, VV <: V](load: KK => F[VV]): cache.AsyncLoadingCache[KK, VV] =
       caf.buildAsync(new AsyncCacheLoader[KK, VV] {
         def asyncLoad(key: KK, executor: Executor): CompletableFuture[VV] = {
           val p = Promise[VV]
-          Effect[F].runAsync(load(key)) {
-            case Right(v) => IO(p.success(v))
-            case Left(e) => IO(p.failure(e))
-          }.unsafeRunSync()
+          Effect[F]
+            .runAsync(load(key)) {
+              case Right(v) => IO(p.success(v))
+              case Left(e)  => IO(p.failure(e))
+            }
+            .unsafeRunSync()
           toJavaFuture(p.future).toCompletableFuture
         }
       })
-    }
   }
 }

@@ -35,21 +35,19 @@ class JujiuSpec extends Specification {
     val program = for {
       r1 <- cache.fetch(1)
       r2 <- cache.fetch(2)
-      r3 <- cache.fetchAll(List[Integer](1,2,3))
+      r3 <- cache.fetchAll(List[Integer](1, 2, 3))
     } yield (r1, r2, r3)
 
     val caffeine = Caffeine
       .newBuilder()
       .executionContext(global)
       .expire(
-      (_: Integer, _: String) => {
-        1.second
-      },
-      (_: Integer, _: String, currentDuration: FiniteDuration) =>
-        currentDuration,
-      (_: Integer, _: String, currentDuration: FiniteDuration) =>
-        currentDuration
-    )
+        (_: Integer, _: String) => {
+          1.second
+        },
+        (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration,
+        (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration
+      )
       .async((key: Integer) => IO("async string" + key))
 
     program(caffeine).unsafeRunSync() must_== (

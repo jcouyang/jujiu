@@ -4,7 +4,12 @@ import java.util.concurrent.CompletableFuture
 
 import cats.data.Kleisli
 import cats.effect.{Async, Sync}
-import com.github.benmanes.caffeine.cache.{AsyncCache => CACache, AsyncLoadingCache => CALCache, Cache => CCache, LoadingCache => CLCache}
+import com.github.benmanes.caffeine.cache.{
+  AsyncCache => CACache,
+  AsyncLoadingCache => CALCache,
+  Cache => CCache,
+  LoadingCache => CLCache
+}
 
 import scala.compat.java8.FutureConverters.toScala
 import scala.concurrent.ExecutionContext
@@ -28,12 +33,15 @@ trait CaffeineAsyncCache[F[_], K, V] extends Cache[F, CACache, K, V] {
       M.delay(caffeine.put(k, CompletableFuture.completedFuture(v)))
     }
   def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Option[V]] =
-    Kleisli(caffeine => M.async{cb =>
-      toScala(caffeine.getIfPresent(k)).onComplete {
-        case Success(v) => cb(Right(Some(v)))
-        case Failure(_) => cb(Right(None))
-      }
-    })
+    Kleisli(
+      caffeine =>
+        M.async { cb =>
+          toScala(caffeine.getIfPresent(k)).onComplete {
+            case Success(v) => cb(Right(Some(v)))
+            case Failure(_) => cb(Right(None))
+          }
+        }
+    )
   def clear(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
     ???
 }
