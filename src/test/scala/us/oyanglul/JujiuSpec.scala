@@ -1,14 +1,18 @@
 package us.oyanglul.jujiu
-import com.github.benmanes.caffeine.cache.{Caffeine}
+import com.github.benmanes.caffeine.cache.Caffeine
 import java.util.concurrent.Executor
+
 import scala.concurrent.ExecutionContext
-import java.util.concurrent.{Executor}
+import java.util.concurrent.Executor
+
 import org.specs2.mutable.Specification
 import cats.instances.list._
 import cats.effect._
-import scala.concurrent.duration._
 
-class JujiuSpec extends Specification with CaffeineSyntax {
+import scala.concurrent.duration._
+import syntax.caffeine._
+
+class JujiuSpec extends Specification {
   "it should able to get and set cache" >> {
     object cache extends CaffeineCache[IO, String, String]
     val program = for {
