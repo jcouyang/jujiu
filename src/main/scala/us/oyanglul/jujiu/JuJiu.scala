@@ -9,11 +9,17 @@ import cats.syntax.traverse._
 trait Cache[F[_], S[_, _], K, V] {
   def put(k: K, v: V)(implicit M: Async[F]): Kleisli[F, S[K, V], Unit]
   def fetch(k: K)(implicit M: Async[F]): Kleisli[F, S[K, V], Option[V]]
-  def fetch(k: K, default: K => F[V])(implicit M: Async[F]): Kleisli[F, S[K, V], V] =
-    fetch(k).flatMapF {
-      case Some(v) => M.delay(v)
-      case None => default(k)
+  def fetch(k: K, load: K => F[V])(implicit M: Async[F]): Kleisli[F, S[K, V], V] = for {
+    optional <- fetch(k)
+    value <- optional match {
+      case Some(v) => Kleisli.pure[F, S[K,V], V](v)
+      case None => for {
+        backup <- Kleisli.liftF(load(k))
+        v <- put(k, backup).map(_ => backup)
+      } yield v
     }
+  } yield value
+
   def fetchAll[L[_]: Traverse](keys: L[K])(implicit M: Async[F]): Kleisli[F, S[K, V], L[Option[V]]] =
     keys.traverse(k => fetch(k))
 
