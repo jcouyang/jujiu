@@ -1,10 +1,6 @@
 package us.oyanglul.jujiu
 import com.github.benmanes.caffeine.cache.Caffeine
-import java.util.concurrent.Executor
-
 import scala.concurrent.ExecutionContext
-import java.util.concurrent.Executor
-
 import org.specs2.mutable.Specification
 import cats.instances.list._
 import cats.effect._
@@ -44,11 +40,16 @@ class JujiuSpec extends Specification {
 
     val caffeine = Caffeine
       .newBuilder()
-      .executor(new Executor {
-        def execute(r: Runnable) =
-          global.execute(r)
-      })
-      .expireAfterAccess(1 second)
+      .executionContext(global)
+      .expire(
+      (_: Integer, _: String) => {
+        1.second
+      },
+      (_: Integer, _: String, currentDuration: FiniteDuration) =>
+        currentDuration,
+      (_: Integer, _: String, currentDuration: FiniteDuration) =>
+        currentDuration
+    )
       .async((key: Integer) => IO("async string" + key))
 
     program(caffeine).unsafeRunSync() must_== (
