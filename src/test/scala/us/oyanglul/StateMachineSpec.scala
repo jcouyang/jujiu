@@ -30,7 +30,8 @@ class CaffeineCacheSpec[K: Arbitrary, V : Arbitrary] extends CaffeineCacheBaseSp
       genFetch,
       genPut,
       genFetchOr,
-      genClear
+      genClear,
+      genFetchAll
     )
 }
 
@@ -126,7 +127,9 @@ class CaffeineAsyncCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBa
     Gen.oneOf(
       genFetch,
       genPut,
-      genFetchOr
+      genClear,
+      genFetchOr,
+      genFetchAll
     )
   def destroySut(sut: Sut): Unit = (())
 }

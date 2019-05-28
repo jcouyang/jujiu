@@ -44,7 +44,8 @@ trait CaffeineAsyncCache[F[_], K, V] extends Cache[F, CACache, K, V] {
           }
         }
     )
-  def clear(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] = ???
+  def clear(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
+    Kleisli(caffeine => M.delay(caffeine.synchronous().invalidate(k)))
 }
 
 trait CaffeineAsyncLoadingCache[F[_], K, V] extends AsyncLoadingCache[F, CALCache, K, V] {
