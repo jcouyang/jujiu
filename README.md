@@ -19,7 +19,7 @@ Functional Scala Caching
       _ <- cache.put("not exist yet", "overrided")
       r3 <- cache.fetch("not exist yet")
     } yield (r1, r2, r3)
-    program(Caffeine().sync).unsafeRunSync() must_== ((None, "default", "overrided"))
+    program(Caffeine().sync).unsafeRunSync() must_== ((None, "default", Some("overrided")))
 ```
 you can find the code in [test](https://github.com/jcouyang/jujiu/blob/master/src/test/scala/us/oyanglul/JujiuSpec.scala) as well, I can walk you through line by line though
 
@@ -37,7 +37,7 @@ let us give the following process a name `program`
 - `_ <- cache.put("not exist yet", "overrided")` \
   `put` will update the value of key "not exist yet" to "overrided"
 
-- `program(Caffeine().sync).unsafeRunSync() must_== ((None, "default", "overrided"))` \
+- `program(Caffeine().sync).unsafeRunSync() must_== ((None, "default", Some("overrided")))` \
   `Caffeine().sync` is the Scala ideomic syntax to build a synchronize Caffeine Cache \
   if you still recall that the `program` is actually `Klesili[IO, Cache, String]` so now \
   I provide it a `Cache` by `program(Caffeine().sync)` \
