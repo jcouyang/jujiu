@@ -3,7 +3,7 @@ package us.oyanglul.jujiu
 import java.util.concurrent.CompletableFuture
 
 import cats.data.Kleisli
-import cats.effect.{Async, Sync}
+import cats.effect.{Async}
 import cats.instances.all._
 import cats.syntax.all._
 import com.github.benmanes.caffeine.cache.{
@@ -62,6 +62,6 @@ trait CaffeineAsyncLoadingCache[F[_], K, V] extends AsyncLoadingCache[F, CALCach
     }
 }
 trait CaffeineLoadingCache[F[_], K, V] extends LoadingCache[F, CLCache, K, V] {
-  def fetch(k: K)(implicit M: Sync[F]): Kleisli[F, CLCache[K, V], V] =
+  def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CLCache[K, V], V] =
     Kleisli(caffeine => M.delay(caffeine.get(k)))
 }

@@ -15,7 +15,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 trait CaffeineSyntax {
   import com.github.benmanes.caffeine.cache
   object Caffeine {
-    def apply(): Caffeine[Any, Any] =  cache.Caffeine.newBuilder().asInstanceOf[cache.Caffeine[Any, Any]]
+    def apply(): Caffeine[Any, Any] = cache.Caffeine.newBuilder().asInstanceOf[cache.Caffeine[Any, Any]]
   }
   implicit class CaffeineWrapper[K, V](caf: cache.Caffeine[K, V]) {
     def expireAfterAccess(duration: FiniteDuration): cache.Caffeine[K, V] =
@@ -45,8 +45,12 @@ trait CaffeineSyntax {
         def execute(r: Runnable) =
           ec.execute(r)
       })
-    def sync[KK, VV]: cache.Cache[KK, VV] =
-      caf.build().asInstanceOf[cache.Cache[KK, VV]]
+    def sync[KK <: K, VV <: V]: cache.Cache[KK, VV] =
+      caf.build[KK, VV]()
+    def sync[KK <: K, VV <: V](l: KK => VV): cache.LoadingCache[KK, VV] =
+      caf.build[KK, VV](new cache.CacheLoader[KK, VV] {
+        def load(key: KK) = l(key)
+      })
     def async[KK <: K, VV <: V]: cache.AsyncCache[KK, VV] =
       caf.buildAsync[KK, VV]()
     def async[F[_]: Effect, KK <: K, VV <: V](load: KK => F[VV]): cache.AsyncLoadingCache[KK, VV] =
