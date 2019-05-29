@@ -10,8 +10,8 @@ inScope(Scope.GlobalScope)(List(
       url("https://github.com/jcouyang/jujiu"),
       "scm:git:git@github.com:jcouyang/jujiu.git"
   )),
-  pgpPublicRing := file("/keys/.gnupg/pubring.asc"),
-  pgpSecretRing := file("/keys/.gnupg/secring.asc"),
+  pgpPublicRing := file("/home/circleci/repo/.gnupg/pubring.asc"),
+  pgpSecretRing := file("/home/circleci/repo/.gnupg/secring.asc"),
   releaseEarlyWith := SonatypePublisher,
   scalaVersion     := "2.12.8"
 ))
