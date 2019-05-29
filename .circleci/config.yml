@@ -42,6 +42,7 @@ jobs:
             - v1-dependencies-{{ checksum "build.sbt" }}
             - v1-dependencies-
       - run: |
+          mkdir -p .gnupg
           echo $GPG_PASS > .gnupg/secring.asc
           echo $GPG_PUB > .gnupg/pubring.asc
           sbt releaseEarly
