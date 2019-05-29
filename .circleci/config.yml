@@ -42,9 +42,9 @@ jobs:
             - v1-dependencies-{{ checksum "build.sbt" }}
             - v1-dependencies-
       - run: |
-          mkdir -p ~/repo/.gnupg
-          echo $GPG_PASS > ~/repo/.gnupg/secring.asc
-          echo $GPG_PUB > ~/repo/.gnupg/pubring.asc
+          mkdir -p /keys/.gnupg
+          echo $GPG_PASS | base64 --decode > /keys/.gnupg/secring.asc
+          echo $GPG_PUB | base64 --decode > /keys/.gnupg/pubring.asc
           sbt releaseEarly
 workflows:
   version: 2
