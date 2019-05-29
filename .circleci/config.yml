@@ -43,19 +43,27 @@ jobs:
             - v1-dependencies-
       - run: |
           mkdir -p .gnupg
-          echo $GPG_PASS | base64 --decode > .gnupg/secring.asc
+          echo $GPG_SEC | base64 --decode > .gnupg/secring.asc
           echo $GPG_PUB | base64 --decode > .gnupg/pubring.asc
           sbt releaseEarly
 workflows:
   version: 2
-  build-release:
+  build:
     jobs:
       - build
+  release:
+    jobs:
+      - build
+          filters:
+            tags:
+              only: /^[0-9.]+.*/
+            branches:
+              ignore: /.*/
       - deploy:
           requires:
             - build
           filters:
             tags:
-              only: /.*/
+              only: /^[0-9.]+.*/
             branches:
-              only: master
+              ignore: /.*/
