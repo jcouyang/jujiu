@@ -53,7 +53,7 @@ workflows:
       - build
   release:
     jobs:
-      - build
+      - build:
           filters:
             tags:
               only: /^[0-9.]+.*/
