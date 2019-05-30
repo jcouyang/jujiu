@@ -1,7 +1,10 @@
 package us.oyanglul.jujiu
+import cats.{ Applicative }
+import cats.data.Kleisli
 import scala.concurrent.ExecutionContext
 import org.specs2.mutable.Specification
 import cats.instances.list._
+import cats.syntax.all._
 import cats.effect._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -59,5 +62,66 @@ class JujiuSpec extends Specification {
     program(caffeineA).unsafeRunSync() must_== expected
     program(caffeineB).unsafeRunSync() must_== expected
     program(Caffeine().async(_ => IO.raiseError(new Exception("something wrong")))).unsafeRunSync() must throwA[Exception]
+  }
+
+    "works with tagless final" >> {
+
+    trait LogDsl[F[_]] {
+      def log(msg: String): F[Unit]
+    }
+
+    def program[F[_]: Async](implicit
+      logger: LogDsl[F],
+      cache: CaffeineCache[F, String, String],
+    ) = {
+      for {
+        _ <- Kleisli.liftF(logger.log("something"))
+        value <- cache.fetch("key")
+      } yield value 
+
+    }
+
+      implicit val logDsl = new LogDsl[IO]{
+        def log(msg: String) =  IO(org.log4s.getLogger.info(msg))
+      }
+      implicit object cache extends CaffeineCache[IO, String, String]
+
+    program[IO].run(Caffeine().sync[String, String]).unsafeRunSync() must_== None
+    }
+
+  "works with tagless final style readerT" >> {
+    import com.github.benmanes.caffeine.cache
+    trait HasLogger {
+      def logger: org.log4s.Logger
+    }
+    trait HasCacheProvider {
+      def cacheProvider: cache.Cache[String, String]
+    }
+
+    type Env = HasLogger with HasCacheProvider
+
+    trait LogDsl[F[_]] {
+      def log(msg: String)(implicit M: Applicative[F]): Kleisli[F, Env, Unit] = Kleisli(a => M.pure(a.logger.info(msg)))
+    }
+
+    def program[F[_]](implicit
+      logger: LogDsl[F],
+      ev: Async[F],
+      ccache: CaffeineCache[F, String, String],
+    ) = {
+      for {
+        _ <- logger.log("something")
+        value <- ccache.fetch("key").local((e: Env) => e.cacheProvider)
+      } yield value 
+
+    }
+
+    implicit val logDsl = new LogDsl[IO]{}
+    implicit val cacheDsl = new CaffeineCache[IO, String, String] {}
+
+    program.run(new HasLogger with HasCacheProvider {
+      def logger = org.log4s.getLogger
+      def cacheProvider = Caffeine().sync
+    }).unsafeRunSync() must_== None
   }
 }
