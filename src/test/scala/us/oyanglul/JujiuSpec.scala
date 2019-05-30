@@ -1,10 +1,9 @@
 package us.oyanglul.jujiu
-import com.github.benmanes.caffeine.cache.Caffeine
 import scala.concurrent.ExecutionContext
 import org.specs2.mutable.Specification
 import cats.instances.list._
 import cats.effect._
-
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import syntax.caffeine._
 
@@ -20,14 +19,11 @@ class JujiuSpec extends Specification {
       r4 <- cache.fetch("not exist yet")
     } yield (r1, r2, r3, r4)
     program(
-      Caffeine
-        .newBuilder()
-        .build()
+      Caffeine().sync
     ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
   }
 
   "it should able to get and set async loading cache" >> {
-    import scala.concurrent.ExecutionContext.Implicits.global
     object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
       implicit val executionContext = global
     }
@@ -38,8 +34,7 @@ class JujiuSpec extends Specification {
       r3 <- cache.fetchAll(List[Integer](1, 2, 3))
     } yield (r1, r2, r3)
 
-    val caffeine = Caffeine
-      .newBuilder()
+    val caffeineA = Caffeine()
       .executionContext(global)
       .expire(
         (_: Integer, _: String) => {
@@ -50,12 +45,19 @@ class JujiuSpec extends Specification {
       )
       .async((key: Integer) => IO("async string" + key))
 
-    program(caffeine).unsafeRunSync() must_== (
-      (
-        "async string1",
-        "async string2",
-        List("async string1", "async string2", "async string3")
-      )
+    val caffeineB = Caffeine()
+      .expireAfterAccess(1.second)
+      .expireAfterWrite(2.seconds)
+      .refreshAfterWrite(3.seconds)
+      .async((key: Integer) => IO("async string" + key))
+
+    val expected = (
+      "async string1",
+      "async string2",
+      List("async string1", "async string2", "async string3")
     )
+    program(caffeineA).unsafeRunSync() must_== expected
+    program(caffeineB).unsafeRunSync() must_== expected
+    program(Caffeine().async(_ => IO.raiseError(new Exception("something wrong")))).unsafeRunSync() must throwA[Exception]
   }
 }
