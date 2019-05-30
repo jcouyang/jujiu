@@ -3,6 +3,7 @@
 Functional Scala Caching
 
 [![CircleCI](https://circleci.com/gh/jcouyang/jujiu.svg?style=svg)](https://circleci.com/gh/jcouyang/jujiu)
+[![Javadocs](https://www.javadoc.io/badge/us.oyanglul/jujiu_2.12.svg?label=document)](https://www.javadoc.io/doc/us.oyanglul/jujiu_2.12)
 [![](https://jitpack.io/v/jcouyang/jujiu.svg)](https://jitpack.io/#jcouyang/jujiu)
 [![codecov](https://codecov.io/gh/jcouyang/jujiu/branch/master/graph/badge.svg)](https://codecov.io/gh/jcouyang/jujiu)
 
