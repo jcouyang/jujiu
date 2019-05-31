@@ -106,31 +106,33 @@ class JujiuSpec extends Specification {
   }
 
   "works with tagless final" >> {
-    import syntax.cache._
+    import us.oyanglul.jujiu.syntax.cache._
     trait LogDsl[F[_]] {
       def log(msg: String): F[Unit]
     }
 
-    implicit val logDsl = new LogDsl[IO] {
-      def log(msg: String) = IO(org.log4s.getLogger.info(msg))
-    }
+    type ProgramDsl[F[_]] = CaffeineCache[F, String, String] with LogDsl[F]
 
-    implicit object cacheDsl extends CaffeineCache[IO, String, String]
-    implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
-    def program[F[_]: Async](
-      implicit
-      logdsl: LogDsl[F],
-      c: CaffeineCache[F, String, String]
-    ): F[Option[String]] =
+    def program[F[_]: Async](dsl: ProgramDsl[F])
+    (implicit ev: cache.Cache[String, String]): F[Option[String]] =
       for {
-        value <- c.fetchF("key")
-        _ <- logdsl.log("something")
+        value <- dsl.fetchF("key")
+        _ <- dsl.log("something")
       } yield value
 
-    program[IO].unsafeRunSync() must_== None
+    {
+      object dsl extends CaffeineCache[IO, String, String] with LogDsl[IO] {
+        def log(msg: String) = IO(org.log4s.getLogger.info(msg))
+      }
+
+      implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
+
+      program[IO](dsl).unsafeRunSync() must_== None
+    }
   }
 
   "works with tagless final style readerT" >> {
+    // Layer 1: Environment
     trait HasLogger {
       def logger: org.log4s.Logger
     }
@@ -140,25 +142,25 @@ class JujiuSpec extends Specification {
 
     type Env = HasLogger with HasCacheProvider
 
+    // Layer 2: DSL
     trait LogDsl[F[_]] {
       def log(msg: String)(implicit M: Applicative[F]): Kleisli[F, Env, Unit] = Kleisli(a => M.pure(a.logger.info(msg)))
     }
 
-    def program[F[_]](
-      implicit
-      logger: LogDsl[F],
-      ev: Async[F],
-      ccache: CaffeineCache[F, String, String]
+    type Dsl[F[_]] = CaffeineCache[F, String, String] with LogDsl[F]
+
+    // Layer 3: Business
+    def program[F[_]](dsl: Dsl[F])(
+      implicit ev: Async[F]
     ) =
       for {
-        _ <- logger.log("something")
-        value <- ccache.fetch("key").local((e: Env) => e.cacheProvider)
+        _ <- dsl.log("something")
+        value <- dsl.fetch("key").local[Env](_.cacheProvider)
       } yield value
 
-    implicit val logDsl = new LogDsl[IO] {}
-    implicit val cacheDsl = new CaffeineCache[IO, String, String] {}
+    object dsl extends CaffeineCache[IO, String, String] with LogDsl[IO]
 
-    program
+    program[IO](dsl)
       .run(new HasLogger with HasCacheProvider {
         def logger = org.log4s.getLogger
         def cacheProvider = Caffeine().sync
