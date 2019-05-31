@@ -1,6 +1,7 @@
 package us.oyanglul.jujiu
 import cats.{Applicative}
 import cats.data.Kleisli
+import java.util.concurrent.CompletableFuture
 import scala.concurrent.ExecutionContext
 import org.specs2.mutable.Specification
 import cats.instances.list._
@@ -11,7 +12,7 @@ import scala.concurrent.duration._
 import syntax.caffeine._
 import com.github.benmanes.caffeine.cache
 
-class JujiuSpec extends Specification {
+class JujiuSpec extends Specification with org.specs2.mock.Mockito{
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   "it should able to get and set cache" >> {
     object cache extends CaffeineCache[IO, String, String]
@@ -28,6 +29,22 @@ class JujiuSpec extends Specification {
     ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
   }
 
+  "it should IO error when async load failure" >> {
+    object dsl extends CaffeineAsyncCache[IO, String, String] {
+      implicit val executionContext = global
+    }
+    val program = for {
+      r1 <- dsl.fetch("not exist yet")
+      r2 <- dsl.fetch("not exist yet", _ => IO("default"))
+    } yield (r1, r2)
+
+    val failCache = mock[cache.AsyncCache[String, String]]
+    failCache.getIfPresent("not exist yet") returns CompletableFuture.supplyAsync(() => IO.raiseError[String](new Exception("cache load error")).unsafeRunSync())
+
+    program(
+      failCache
+    ).unsafeRunSync() must throwA[Exception](message = "cache load error")
+  }
   "it should able to get and set async loading cache" >> {
     object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
       implicit val executionContext = global
@@ -80,6 +97,7 @@ class JujiuSpec extends Specification {
           r2 <- c.fetchF("key2", _ => IO("value2"))
           r3 <- c.fetchAllF(List("key1", "key2"))
           r4 <- c.parFetchAllF[List, IO.Par](List("key1", "key2"))
+          _ <- c.clearF("key1")
         } yield (r1, r2, r3, r4)
       program.unsafeRunSync() must_== (
         (
