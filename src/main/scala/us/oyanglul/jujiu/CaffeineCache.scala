@@ -48,7 +48,7 @@ trait CaffeineAsyncCache[F[_], K, V] extends Cache[F, CACache, K, V] {
     Kleisli(caffeine => M.delay(caffeine.synchronous().invalidate(k)))
 }
 
-trait CaffeineAsyncLoadingCache[F[_], K, V] extends AsyncLoadingCache[F, CALCache, K, V] {
+trait CaffeineAsyncLoadingCache[F[_], K, V] extends LoadingCache[F, CALCache, K, V] {
   implicit val executionContext: ExecutionContext
   override def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CALCache[K, V], V] =
     Kleisli { caffeine =>
