@@ -2,7 +2,7 @@ import Dependencies._
 
 inScope(Scope.GlobalScope)(List(
   organization := "us.oyanglul",
-  licenses := Seq("BSD" -> url("http://opensource.org/licenses/BSD-3-Clause")),
+  licenses := Seq("Apache License 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
   homepage := Some(url("https://github.com/jcouyang/jujiu")),
   developers := List(Developer("jcouyang", "Jichao Ouyang", "oyanglulu@gmail.com", url("https://github.com/jcouyang"))),
   scmInfo := Some(
