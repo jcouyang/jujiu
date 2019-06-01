@@ -17,6 +17,10 @@ object Dependencies {
     "org.specs2"      %% "specs2-mock"   % "4.3.4" % Test
   )
 
+  lazy val redis = Seq(
+    "redis.clients" % "jedis" % "3.0.1" % Test
+  )
+
   lazy val logs = Seq(
     "org.log4s"       %% "log4s"               % "1.8.0",
     "ch.qos.logback"  %  "logback-classic"     % "1.2.3"

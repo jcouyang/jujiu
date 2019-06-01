@@ -23,5 +23,6 @@ lazy val root = (project in file("."))
       cats ++
       specs2 ++
       logs ++
-      caffeine
+      caffeine ++
+      redis
   )

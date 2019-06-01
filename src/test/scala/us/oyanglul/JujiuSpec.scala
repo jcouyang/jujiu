@@ -185,4 +185,39 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito{
       })
       .unsafeRunSync() must_== None
   }
+
+  "run on redis" >> {
+    import redis.clients.jedis._
+
+    def program[F[_]: Async, S[_, _]](dsl: Cache[F, S, String, String]) = for {
+      r1 <- dsl.fetch("not exist yet")
+      r2 <- dsl.fetch("not exist yet", _ => Async[F].delay("default"))
+      _ <- dsl.put("not exist yet", "now exist")
+      r3 <- dsl.fetch("not exist yet")
+      _ <- dsl.clear("not exist yet")
+      r4 <- dsl.fetch("not exist yet")
+    } yield (r1, r2, r3, r4)
+
+    type J[A, B] = Jedis
+    object dsl extends Cache[IO, J, String, String] {
+      def put(k: String, v: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Unit] =
+        Kleisli { redis =>
+          M.delay{
+            redis.set(k, v)
+            ()
+          }
+        }
+      def fetch(k: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Option[String]] =
+        Kleisli(redis => M.delay(Option(redis.get(k))))
+      def clear(k: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Unit] =
+        Kleisli(redis => M.delay{
+          redis.del(k)
+          ()
+        })
+    }
+
+    program(dsl).run(
+       new Jedis("localhost")
+    ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
+  }.pendingUntilFixed("Redis")
 }
