@@ -1,3 +1,24 @@
+* 雎鳩ju jiu
+  :PROPERTIES:
+  :CUSTOM_ID: 雎鳩ju-jiu
+  :END:
+
+Functional Scala Caching
+
+[[https://circleci.com/gh/jcouyang/jujiu][[[https://circleci.com/gh/jcouyang/jujiu.svg?style=svg]]]]
+[[https://www.javadoc.io/doc/us.oyanglul/jujiu_2.12][[[https://www.javadoc.io/badge/us.oyanglul/jujiu_2.12.svg?label=document]]]]
+[[https://jitpack.io/#jcouyang/jujiu][[[https://jitpack.io/v/jcouyang/jujiu.svg]]]]
+[[https://codecov.io/gh/jcouyang/jujiu][[[https://codecov.io/gh/jcouyang/jujiu/branch/master/graph/badge.svg]]]]
+
+[[https://en.wikisource.org/wiki/zh:%E5%8F%A4%E4%BB%8A%E5%9C%96%E6%9B%B8%E9%9B%86%E6%88%90/%E5%8D%9A%E7%89%A9%E5%BD%99%E7%B7%A8/%E7%A6%BD%E8%9F%B2%E5%85%B8/%E7%AC%AC011%E5%8D%B7][]]
+> 关关雎鸠 在河之洲
+
+* Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
+  :PROPERTIES:
+  :header-args: :tangle src/test/scala/us/oyanglul/JujiuSpec.scala :exports code
+  :CUSTOM_ID: making-caffeine-cats-friendly-badge
+  :END:
+#+BEGIN_SRC scala :exports none
 package us.oyanglul.jujiu
 import cats.{Applicative}
 import cats.data.Kleisli
@@ -12,9 +33,11 @@ import scala.concurrent.duration._
 import syntax.caffeine._
 import com.github.benmanes.caffeine.cache
 
-class JujiuSpec extends Specification with org.specs2.mock.Mockito {
+class JujiuSpec extends Specification with org.specs2.mock.Mockito{
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+#+END_SRC
 
+#+BEGIN_SRC scala
   "it should able to get and set cache" >> {
     object cache extends CaffeineCache[IO, String, String]
     val program = for {
@@ -29,7 +52,9 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       Caffeine().sync
     ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
   }
+#+END_SRC
 
+#+BEGIN_SRC scala :exports none
   "it should IO error when async load failure" >> {
     object dsl extends CaffeineAsyncCache[IO, String, String] {
       implicit val executionContext = global
@@ -40,17 +65,60 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
     } yield (r1, r2)
 
     val failCache = mock[cache.AsyncCache[String, String]]
-    failCache
-      .getIfPresent("not exist yet")
-      .returns(
-        CompletableFuture.supplyAsync(() => IO.raiseError[String](new Exception("cache load error")).unsafeRunSync())
-      )
+    failCache.getIfPresent("not exist yet") returns CompletableFuture.supplyAsync(() => IO.raiseError[String](new Exception("cache load error")).unsafeRunSync())
 
     program(
       failCache
     ).unsafeRunSync() must throwA[Exception](message = "cache load error")
   }
+#+END_SRC
 
+you can find the code in
+[[https://github.com/jcouyang/jujiu/blob/master/src/test/scala/us/oyanglul/JujiuSpec.scala][test]]
+as well, I can walk you through line by line though
+
+- =object cache extends CaffeineCache[IO, String, String]=\\
+  it creates an instance of =CaffeineCache= which has side effect =IO=,
+  key is =String= and value is =String= as well
+- =val program = for {=\\
+  let us give the following process a name =program=
+- =r1 <- cache.fetch("not exist yet")=\\
+  =cache.fetch= won't acutally trigger any effect, it just returns a
+  DSL, represent as type =Klesili[IO, Cache, String]= which in English
+  you can read as, "give me a =Cache= and I can provide you an
+  =IO[String]="
+
+- =r2 <- cache.fetch("not exist yet", _ => IO("default"))=\\
+  this is new =fetch= DSL, the second parameter is a function
+  =K => IO[V]=, if cache not exist, it will run the function can put the
+  result into the cache, and return the value
+
+- =_ <- cache.put("not exist yet", "overrided")=\\
+  =put= will update the value of key "not exist yet" to "overrided"
+
+- =program(Caffeine().sync).unsafeRunSync() must_== ((None, "default", Some("overrided")))=\\
+  =Caffeine().sync= is the Scala idiomatic syntax to build synchronize
+  Caffeine Cache\\
+  if you still recall that the =program= is actually
+  =Klesili[IO, Cache, String]= so now\\
+  I provide it a =Cache= by =program(Caffeine().sync)=\\
+  it shall return me a =IO[String]= =.unsafeRunSync()= the IO and all
+  effects you described before in =program= will be triggered\\
+  and you will get the actual result
+
+** and Cats IO
+   :PROPERTIES:
+   :CUSTOM_ID: and-cats-io
+   :END:
+
+Dealing with Java DSL and Java Future is too verbose and painful in
+Scala project
+
+Let's see how Jiujiu makes Caffeine friendly to Cats IO as well
+
+A good example is the Async Loading Cache
+
+#+BEGIN_SRC scala
   "it should able to get and set async loading cache" >> {
     object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
       implicit val executionContext = global
@@ -89,7 +157,56 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
     program(Caffeine().async(_ => IO.raiseError(new Exception("something wrong"))))
       .unsafeRunSync() must throwA[Exception]
   }
+#+END_SRC
 
+- Async Loading Cache need an Execution Context to execute the Java
+  Future things
+
+#+BEGIN_EXAMPLE
+    object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
+      implicit val executionContext = global  // provide excution context for exec Future
+    }
+#+END_EXAMPLE
+
+- =ContextShift= is for runing =IO= in parallel, will explain in later
+  =fetchAll=
+
+#+BEGIN_EXAMPLE
+    implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+#+END_EXAMPLE
+
+- =program= is pretty much the same, it is just DSL\\
+  but here =fetchAll= is async loading all values of keys and so it
+  should run in *parallel*\\
+  in Cats IO we need to tell how to *shift* thread\\
+  usually your =IO= should =run= in =IOApp=(which provided you context
+  already) so you won't need to worry too much about that
+
+- =.executionContext(global)= will make sure the cache using Scala
+  execution context otherwise its default java folk join pool.
+
+#+BEGIN_EXAMPLE
+    val caffeine = Caffeine()
+      .executionContext(global)
+#+END_EXAMPLE
+
+- =expire= default the expiring policy, here it's more Scala way using
+  lambda and =Duration=
+
+#+BEGIN_EXAMPLE
+      .expire(
+        (_: Integer, _: String) => { 1.second }, // after create
+        (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration, // after write
+        (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration // after read
+      )
+#+END_EXAMPLE
+
+- =.async((key: Integer) => IO("async string" + key))= will create an
+  async loading cache\\
+  the async loading function that it will use is =K => IO[V]= so you
+  don't need to deal with awful Java Future.
+
+#+BEGIN_SRC scala
   "works with IO" >> {
     import syntax.cache._
     "normal cache" >> {
@@ -115,6 +232,10 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       )
     }
 
+#+END_SRC
+
+
+#+BEGIN_SRC scala
     "loading cache" >> {
       val c: LoadingCache[IO, cache.LoadingCache, String, String] = new CaffeineLoadingCache[IO, String, String] {}
       implicit val cacheProvider: cache.LoadingCache[String, String] = Caffeine().sync(identity)
@@ -128,7 +249,10 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       program.unsafeRunSync() must_== (("1", List("2", "3"), List("4", "5")))
     }
   }
+#+END_SRC
 
+
+#+BEGIN_SRC scala
   "works with tagless final" >> {
     import us.oyanglul.jujiu.syntax.cache._
     trait LogDsl[F[_]] {
@@ -137,7 +261,8 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
 
     type ProgramDsl[F[_]] = CaffeineCache[F, String, String] with LogDsl[F]
 
-    def program[F[_]: Async](dsl: ProgramDsl[F])(implicit ev: cache.Cache[String, String]): F[Option[String]] =
+    def program[F[_]: Async](dsl: ProgramDsl[F])
+    (implicit ev: cache.Cache[String, String]): F[Option[String]] =
       for {
         value <- dsl.fetchF("key")
         _ <- dsl.log("something")
@@ -153,7 +278,9 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       program[IO](dsl).unsafeRunSync() must_== None
     }
   }
+#+END_SRC
 
+#+BEGIN_SRC scala
   "works with tagless final style readerT" >> {
     // Layer 1: Environment
     trait HasLogger {
@@ -190,25 +317,27 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       })
       .unsafeRunSync() must_== None
   }
+#+END_SRC
 
+
+#+BEGIN_SRC scala
   "run on redis" >> {
     import redis.clients.jedis._
 
-    def program[F[_]: Async, S[_, _]](dsl: Cache[F, S, String, String]) =
-      for {
-        r1 <- dsl.fetch("not exist yet")
-        r2 <- dsl.fetch("not exist yet", _ => Async[F].delay("default"))
-        _ <- dsl.put("not exist yet", "now exist")
-        r3 <- dsl.fetch("not exist yet")
-        _ <- dsl.clear("not exist yet")
-        r4 <- dsl.fetch("not exist yet")
-      } yield (r1, r2, r3, r4)
+    def program[F[_]: Async, S[_, _]](dsl: Cache[F, S, String, String]) = for {
+      r1 <- dsl.fetch("not exist yet")
+      r2 <- dsl.fetch("not exist yet", _ => Async[F].delay("default"))
+      _ <- dsl.put("not exist yet", "now exist")
+      r3 <- dsl.fetch("not exist yet")
+      _ <- dsl.clear("not exist yet")
+      r4 <- dsl.fetch("not exist yet")
+    } yield (r1, r2, r3, r4)
 
     type J[A, B] = Jedis
     object dsl extends Cache[IO, J, String, String] {
       def put(k: String, v: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Unit] =
         Kleisli { redis =>
-          M.delay {
+          M.delay{
             redis.set(k, v)
             ()
           }
@@ -216,20 +345,18 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       def fetch(k: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Option[String]] =
         Kleisli(redis => M.delay(Option(redis.get(k))))
       def clear(k: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Unit] =
-        Kleisli(
-          redis =>
-            M.delay {
-              redis.del(k)
-              ()
-            }
-        )
+        Kleisli(redis => M.delay{
+          redis.del(k)
+          ()
+        })
     }
 
-    program(dsl)
-      .run(
-        new Jedis("localhost")
-      )
-      .unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
+    program(dsl).run(
+       new Jedis("localhost")
+    ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
   }.pendingUntilFixed("Redis")
+#+END_SRC
 
+#+BEGIN_SRC scala :exports none
 }
+#+END_SRC
