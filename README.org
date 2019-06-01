@@ -1,17 +1,17 @@
-* 雎鳩ju jiu
-  :PROPERTIES:
-  :CUSTOM_ID: 雎鳩ju-jiu
-  :END:
+#+HTML: <h1><ruby>雎鳩<rt>ju jiu</rt></ruby></h1>
 
 Functional Scala Caching
 
-[[https://circleci.com/gh/jcouyang/jujiu][[[https://circleci.com/gh/jcouyang/jujiu.svg?style=svg]]]]
-[[https://www.javadoc.io/doc/us.oyanglul/jujiu_2.12][[[https://www.javadoc.io/badge/us.oyanglul/jujiu_2.12.svg?label=document]]]]
-[[https://jitpack.io/#jcouyang/jujiu][[[https://jitpack.io/v/jcouyang/jujiu.svg]]]]
-[[https://codecov.io/gh/jcouyang/jujiu][[[https://codecov.io/gh/jcouyang/jujiu/branch/master/graph/badge.svg]]]]
+[[https://circleci.com/gh/jcouyang/jujiu][https://circleci.com/gh/jcouyang/jujiu.svg?style=svg]]
+[[https://www.javadoc.io/doc/us.oyanglul/jujiu_2.12][https://www.javadoc.io/badge/us.oyanglul/jujiu_2.12.svg?label=document]]
+[[https://jitpack.io/#jcouyang/jujiu][https://jitpack.io/v/jcouyang/jujiu.svg]]
+[[https://codecov.io/gh/jcouyang/jujiu][https://codecov.io/gh/jcouyang/jujiu/branch/master/graph/badge.svg]]
 
-[[https://en.wikisource.org/wiki/zh:%E5%8F%A4%E4%BB%8A%E5%9C%96%E6%9B%B8%E9%9B%86%E6%88%90/%E5%8D%9A%E7%89%A9%E5%BD%99%E7%B7%A8/%E7%A6%BD%E8%9F%B2%E5%85%B8/%E7%AC%AC011%E5%8D%B7][]]
-> 关关雎鸠 在河之洲
+#+HTML: <img src=https://upload.wikimedia.org/wikipedia/commons/7/7e/Imperial_Encyclopaedia_-_Animal_Kingdom_-_pic009_-_%E9%9B%8E%E9%B3%A9%E5%9C%96.svg width=40%/>
+
+#+BEGIN_QUOTE
+关关雎鸠 在河之洲
+#+END_QUOTE
 
 * Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
   :PROPERTIES:
@@ -73,9 +73,11 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito{
   }
 #+END_SRC
 
-you can find the code in
-[[https://github.com/jcouyang/jujiu/blob/master/src/test/scala/us/oyanglul/JujiuSpec.scala][test]]
-as well, I can walk you through line by line though
+#+BEGIN_QUOTE
+This README is a *literal programming* file, all code here will generate the [[https://github.com/jcouyang/jujiu/blob/master/src/test/scala/us/oyanglul/JujiuSpec.scala][test]] file
+#+END_QUOTE
+
+I can walk you through line by line though
 
 - =object cache extends CaffeineCache[IO, String, String]=\\
   it creates an instance of =CaffeineCache= which has side effect =IO=,
@@ -110,6 +112,58 @@ as well, I can walk you through line by line though
    :PROPERTIES:
    :CUSTOM_ID: and-cats-io
    :END:
+Jujiu has very flexible DSL, If you don't like Kleisli, it works with IO as well
+
+#+BEGIN_SRC scala :exports none
+  "works with IO" >> {
+    import syntax.cache._
+    "normal cache" >> {
+      val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String] {}
+      implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
+      def program =
+        for {
+          _ <- IO(println("something"))
+          _ <- c.putF("key1", "value1")
+          r1 <- c.fetchF("key1")
+          r2 <- c.fetchF("key2", _ => IO("value2"))
+          r3 <- c.fetchAllF(List("key1", "key2"))
+          r4 <- c.parFetchAllF[List, IO.Par](List("key1", "key2"))
+          _ <- c.clearF("key1")
+        } yield (r1, r2, r3, r4)
+      program.unsafeRunSync() must_== (
+        (
+          Some("value1"),
+          "value2",
+          List(Some("value1"), Some("value2")),
+          List(Some("value1"), Some("value2"))
+        )
+      )
+    }
+
+#+END_SRC
+
+#+BEGIN_SRC scala
+    "loading cache" >> {
+      val c: LoadingCache[IO, cache.LoadingCache, String, String] = new CaffeineLoadingCache[IO, String, String] {}
+      implicit val cacheProvider: cache.LoadingCache[String, String] = Caffeine().sync(identity)
+      def program =
+        for {
+          _ <- IO(println("something"))
+          r1 <- c.fetchF("1")
+          r2 <- c.fetchAllF(List("2", "3"))
+          r3 <- c.parFetchAllF[List, IO.Par](List("4", "5"))
+        } yield (r1, r2, r3)
+      program.unsafeRunSync() must_== (("1", List("2", "3"), List("4", "5")))
+    }
+  }
+#+END_SRC
+
+All you need to do is provide `cacheProvider` implicitly, since you are not using Kleisli, you need to tell what cache
+these DSLs will run on
+
+similar to `ExecutionContext`, you need to provide context the thread can run on
+
+** and Caffeine builder
 
 Dealing with Java DSL and Java Future is too verbose and painful in
 Scala project
@@ -206,52 +260,11 @@ A good example is the Async Loading Cache
   the async loading function that it will use is =K => IO[V]= so you
   don't need to deal with awful Java Future.
 
-#+BEGIN_SRC scala
-  "works with IO" >> {
-    import syntax.cache._
-    "normal cache" >> {
-      val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String] {}
-      implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
-      def program =
-        for {
-          _ <- IO(println("something"))
-          _ <- c.putF("key1", "value1")
-          r1 <- c.fetchF("key1")
-          r2 <- c.fetchF("key2", _ => IO("value2"))
-          r3 <- c.fetchAllF(List("key1", "key2"))
-          r4 <- c.parFetchAllF[List, IO.Par](List("key1", "key2"))
-          _ <- c.clearF("key1")
-        } yield (r1, r2, r3, r4)
-      program.unsafeRunSync() must_== (
-        (
-          Some("value1"),
-          "value2",
-          List(Some("value1"), Some("value2")),
-          List(Some("value1"), Some("value2"))
-        )
-      )
-    }
 
-#+END_SRC
+** Works with Tagless Final
+No matter what style of effect abstraction you project is using, Jujiu can easily fit in
 
-
-#+BEGIN_SRC scala
-    "loading cache" >> {
-      val c: LoadingCache[IO, cache.LoadingCache, String, String] = new CaffeineLoadingCache[IO, String, String] {}
-      implicit val cacheProvider: cache.LoadingCache[String, String] = Caffeine().sync(identity)
-      def program =
-        for {
-          _ <- IO(println("something"))
-          r1 <- c.fetchF("1")
-          r2 <- c.fetchAllF(List("2", "3"))
-          r3 <- c.parFetchAllF[List, IO.Par](List("4", "5"))
-        } yield (r1, r2, r3)
-      program.unsafeRunSync() must_== (("1", List("2", "3"), List("4", "5")))
-    }
-  }
-#+END_SRC
-
-
+i.e. Tagless Final
 #+BEGIN_SRC scala
   "works with tagless final" >> {
     import us.oyanglul.jujiu.syntax.cache._
@@ -280,6 +293,10 @@ A good example is the Async Loading Cache
   }
 #+END_SRC
 
+just =extends CaffeineCache[F, K, V]= and provide `cacheProvider`
+
+** ReaderT Pattern
+if your code is readerT pattern, good, it will fit in more naturally
 #+BEGIN_SRC scala
   "works with tagless final style readerT" >> {
     // Layer 1: Environment
@@ -319,7 +336,11 @@ A good example is the Async Loading Cache
   }
 #+END_SRC
 
+notice that proper contravariant adapt need `.local[Env](_.cacheProvider)`
 
+** Extensible
+it's extensible by design as Kleisli, if you provider another cache provider, the same dsl
+will work.
 #+BEGIN_SRC scala
   "run on redis" >> {
     import redis.clients.jedis._
