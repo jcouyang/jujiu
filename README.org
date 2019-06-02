@@ -10,7 +10,7 @@ Functional Scala Caching
 #+HTML: <img src=https://upload.wikimedia.org/wikipedia/commons/7/7e/Imperial_Encyclopaedia_-_Animal_Kingdom_-_pic009_-_%E9%9B%8E%E9%B3%A9%E5%9C%96.svg width=40%/>
 
 #+BEGIN_QUOTE
-关关雎鸠 在河之洲
+关关雎鸠 在河之洲 *Do one thing and do it well* micro [[https://github.com/search?q=org%253Ajcouyang+topic%253Abirds&type=Repositories][birds library]] series
 #+END_QUOTE
 
 * Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
@@ -37,20 +37,19 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito{
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 #+END_SRC
 
-#+BEGIN_SRC scala
+#+BEGIN_SRC scala -r -n
   "it should able to get and set cache" >> {
-    object cache extends CaffeineCache[IO, String, String]
+    object cacheDsl extends CaffeineCache[IO, String, String]   // <- (ref:dsl)
     val program = for {
-      r1 <- cache.fetch("not exist yet")
-      r2 <- cache.fetch("not exist yet", _ => IO("default"))
-      _ <- cache.put("not exist yet", "now exist")
-      r3 <- cache.fetch("not exist yet")
-      _ <- cache.clear("not exist yet")
-      r4 <- cache.fetch("not exist yet")
+      r1 <- cacheDsl.fetch("not exist yet")                     // <- (ref:fetch)
+      r2 <- cacheDsl.fetch("not exist yet", _ => IO("default")) // <- (ref:fetchOr)
+      _ <- cacheDsl.put("not exist yet", "now exist")           // <- (ref:put)
+      r3 <- cacheDsl.fetch("not exist yet")
+      _ <- cacheDsl.clear("not exist yet")
+      r4 <- cacheDsl.fetch("not exist yet")
     } yield (r1, r2, r3, r4)
-    program(
-      Caffeine().sync
-    ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
+    program(Caffeine().sync)                                    // <- (ref:run)
+      .unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
   }
 #+END_SRC
 
@@ -79,27 +78,20 @@ This README is a *literal programming* file, all code here will generate the [[h
 
 I can walk you through line by line though
 
-- =object cache extends CaffeineCache[IO, String, String]=\\
-  it creates an instance of =CaffeineCache= which has side effect =IO=,
+- [[(dsl)][line-(dsl)]] creates an instance of =CaffeineCache= which has side effect =IO=,
   key is =String= and value is =String= as well
-- =val program = for {=\\
-  let us give the following process a name =program=
-- =r1 <- cache.fetch("not exist yet")=\\
-  =cache.fetch= won't acutally trigger any effect, it just returns a
-  DSL, represent as type =Klesili[IO, Cache, String]= which in English
-  you can read as, "give me a =Cache= and I can provide you an
+- [[(fetch)][line-(fetch)]]  won't acutally trigger any effect, it just returns a
+  DSL, represent as type =Klesili[IO, Cache, String]= which in English,
+ "give me a =Cache= and I can provide you an
   =IO[String]="
 
-- =r2 <- cache.fetch("not exist yet", _ => IO("default"))=\\
-  this is new =fetch= DSL, the second parameter is a function
+- [[(fetchOr)][line-(fetchOr)]] is new =fetch= DSL, the second parameter is a function
   =K => IO[V]=, if cache not exist, it will run the function can put the
   result into the cache, and return the value
 
-- =_ <- cache.put("not exist yet", "overrided")=\\
-  =put= will update the value of key "not exist yet" to "overrided"
+- [[(put)][line-(put)]] will update the value of key "not exist yet" to "overrided"
 
-- =program(Caffeine().sync).unsafeRunSync() must_== ((None, "default", Some("overrided")))=\\
-  =Caffeine().sync= is the Scala idiomatic syntax to build synchronize
+- [[(run)][line-(run)]] is the Scala idiomatic syntax to build synchronize
   Caffeine Cache\\
   if you still recall that the =program= is actually
   =Klesili[IO, Cache, String]= so now\\
@@ -158,11 +150,14 @@ Jujiu has very flexible DSL, If you don't like Kleisli, it works with IO as well
   }
 #+END_SRC
 
-All you need to do is provide `cacheProvider` implicitly, since you are not using Kleisli, you need to tell what cache
+All you need to do is provide =cacheProvider= implicitly, since you are not using Kleisli, you need to tell what cache
 these DSLs will run on
 
-similar to `ExecutionContext`, you need to provide context the thread can run on
+#+BEGIN_QUOTE
+similar to =ExecutionContext=, you need to provide context the thread can run on
+#+END_QUOTE
 
+and all dsl suffix with =F=
 ** and Caffeine builder
 
 Dealing with Java DSL and Java Future is too verbose and painful in
@@ -175,7 +170,7 @@ A good example is the Async Loading Cache
 #+BEGIN_SRC scala
   "it should able to get and set async loading cache" >> {
     object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
-      implicit val executionContext = global
+      implicit val executionContext = global          // <-- (ref:executionContext)
     }
 
     val program = for {
@@ -185,15 +180,15 @@ A good example is the Async Loading Cache
     } yield (r1, r2, r3)
 
     val caffeineA = Caffeine()
-      .executionContext(global)
-      .expire(
+      .executionContext(global)           // <-- (ref:global)
+      .expire(                            // <-- (ref:expire)
         (_: Integer, _: String) => {
           1.second
         },
         (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration,
         (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration
       )
-      .async((key: Integer) => IO("async string" + key))
+      .async((key: Integer) => IO("async string" + key)) // <-- (ref:async)
 
     val caffeineB = Caffeine()
       .expireAfterAccess(1.second)
@@ -213,53 +208,20 @@ A good example is the Async Loading Cache
   }
 #+END_SRC
 
-- Async Loading Cache need an Execution Context to execute the Java
+- [[(executionContext)][line-(executionContext)]] Async Loading Cache need an Execution Context to execute the Java
   Future things
 
-#+BEGIN_EXAMPLE
-    object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
-      implicit val executionContext = global  // provide excution context for exec Future
-    }
-#+END_EXAMPLE
+- [[(global)][line-(global)]] =.executionContext(global)= will make sure the cache using Scala
+  execution context as default to execute java future, otherwise its default java folk join pool.
+  alternatively you can also use Akka's execution context.
 
-- =ContextShift= is for runing =IO= in parallel, will explain in later
-  =fetchAll=
-
-#+BEGIN_EXAMPLE
-    implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-#+END_EXAMPLE
-
-- =program= is pretty much the same, it is just DSL\\
-  but here =fetchAll= is async loading all values of keys and so it
-  should run in *parallel*\\
-  in Cats IO we need to tell how to *shift* thread\\
-  usually your =IO= should =run= in =IOApp=(which provided you context
-  already) so you won't need to worry too much about that
-
-- =.executionContext(global)= will make sure the cache using Scala
-  execution context otherwise its default java folk join pool.
-
-#+BEGIN_EXAMPLE
-    val caffeine = Caffeine()
-      .executionContext(global)
-#+END_EXAMPLE
-
-- =expire= default the expiring policy, here it's more Scala way using
+- [[(expire)][line-(expire)]] default the expiring policy, here it's more Scala way using
   lambda and =Duration=
 
-#+BEGIN_EXAMPLE
-      .expire(
-        (_: Integer, _: String) => { 1.second }, // after create
-        (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration, // after write
-        (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration // after read
-      )
-#+END_EXAMPLE
-
-- =.async((key: Integer) => IO("async string" + key))= will create an
-  async loading cache\\
+- [[(async)][line-(async)]] will create an
+  async loading cache.
   the async loading function that it will use is =K => IO[V]= so you
   don't need to deal with awful Java Future.
-
 
 ** Works with Tagless Final
 No matter what style of effect abstraction you project is using, Jujiu can easily fit in
@@ -293,10 +255,10 @@ i.e. Tagless Final
   }
 #+END_SRC
 
-just =extends CaffeineCache[F, K, V]= and provide `cacheProvider`
+just =extends CaffeineCache[F, K, V]= and provide =cacheProvider=
 
 ** ReaderT Pattern
-if your code is readerT pattern, good, it will fit in more naturally
+if your code is in ReaderT pattern, good, it will fit in more naturally
 #+BEGIN_SRC scala
   "works with tagless final style readerT" >> {
     // Layer 1: Environment
@@ -336,7 +298,7 @@ if your code is readerT pattern, good, it will fit in more naturally
   }
 #+END_SRC
 
-notice that proper contravariant adapt need `.local[Env](_.cacheProvider)`
+notice that proper contravariant adapt need =.local[Env](_.cacheProvider)=
 
 ** Extensible
 it's extensible by design as Kleisli, if you provider another cache provider, the same dsl
