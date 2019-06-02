@@ -10,7 +10,7 @@ Functional Scala Caching
 #+HTML: <img src=https://upload.wikimedia.org/wikipedia/commons/7/7e/Imperial_Encyclopaedia_-_Animal_Kingdom_-_pic009_-_%E9%9B%8E%E9%B3%A9%E5%9C%96.svg width=40%/>
 
 #+BEGIN_QUOTE
-关关雎鸠 在河之洲 *Do one thing and do it well* micro [[https://github.com/search?q=org%253Ajcouyang+topic%253Abirds&type=Repositories][birds library]] series
+关关雎鸠 在河之洲 *Do one thing and do it well* micro [[https://github.com/search?q=org:jcouyang+topic:birds&type=Repositories][birds library]] series
 #+END_QUOTE
 
 * Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
