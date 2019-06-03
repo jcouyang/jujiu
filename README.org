@@ -13,6 +13,10 @@ Functional Scala Caching
 关关雎鸠 在河之洲 *Do one thing and do it well* micro [[https://github.com/search?q=org:jcouyang+topic:birds&type=Repositories][birds library]] series
 #+END_QUOTE
 
+#+BEGIN_EXAMPLE
+libraryDependencies += "us.oyanglul" %% "jujiu" % "0.2.1"
+#+END_EXAMPLE
+
 * Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
   :PROPERTIES:
   :header-args: :tangle src/test/scala/us/oyanglul/JujiuSpec.scala :exports code
@@ -104,7 +108,12 @@ I can walk you through line by line though
    :PROPERTIES:
    :CUSTOM_ID: and-cats-io
    :END:
-Jujiu has very flexible DSL, If you don't like Kleisli, it works with IO as well
+Jujiu has very flexible DSL, If you don't like Kleisli, it works with IO(technically you IO type just need to be a =Async=) as well
+
+what you'll need to import some syntax
+#+BEGIN_SRC scala :exports none :tangle no
+import us.oyanglul.jujiu.syntax.cache._
+#+END_SRC
 
 #+BEGIN_SRC scala :exports none
   "works with IO" >> {
@@ -134,6 +143,9 @@ Jujiu has very flexible DSL, If you don't like Kleisli, it works with IO as well
 
 #+END_SRC
 
+and provide =cacheProvider= implicitly, since you are not using Kleisli, you need to tell what cache
+these DSLs will run on
+
 #+BEGIN_SRC scala
     "loading cache" >> {
       val c: LoadingCache[IO, cache.LoadingCache, String, String] = new CaffeineLoadingCache[IO, String, String] {}
@@ -150,9 +162,6 @@ Jujiu has very flexible DSL, If you don't like Kleisli, it works with IO as well
   }
 #+END_SRC
 
-All you need to do is provide =cacheProvider= implicitly, since you are not using Kleisli, you need to tell what cache
-these DSLs will run on
-
 #+BEGIN_QUOTE
 similar to =ExecutionContext=, you need to provide context the thread can run on
 #+END_QUOTE
@@ -166,6 +175,11 @@ Scala project
 Let's see how Jiujiu makes Caffeine friendly to Cats IO as well
 
 A good example is the Async Loading Cache
+
+First you will need caffeine builder syntax
+#+BEGIN_SRC scala :export none :tangle no
+import us.oyanglul.jujiu.syntax.caffeine._
+#+END_SRC
 
 #+BEGIN_SRC scala
   "it should able to get and set async loading cache" >> {

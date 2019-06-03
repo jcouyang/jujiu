@@ -5,6 +5,7 @@ import cats.data.Kleisli
 import cats.effect.{Async}
 import cats.syntax.parallel._
 import cats.syntax.traverse._
+import cats.syntax.foldable._
 
 trait Cache[F[_], S[_, _], K, V] {
   def put(k: K, v: V)(implicit M: Async[F]): Kleisli[F, S[K, V], Unit]
@@ -23,7 +24,7 @@ trait Cache[F[_], S[_, _], K, V] {
     } yield value
 
   def fetchAll[L[_]: Traverse](keys: L[K])(implicit M: Async[F]): Kleisli[F, S[K, V], L[Option[V]]] =
-    keys.traverse(k => fetch(k))
+    keys.traverse(fetch)
 
   def parFetchAll[L[_]: Traverse, G[_]](
     keys: L[K]
@@ -31,6 +32,8 @@ trait Cache[F[_], S[_, _], K, V] {
     keys.parTraverse(fetch)
 
   def clear(k: K)(implicit M: Async[F]): Kleisli[F, S[K, V], Unit]
+  def clearAll[L[_]: Traverse](keys: L[K])(implicit M: Async[F]): Kleisli[F, S[K, V], Unit] =
+    keys.traverse_(clear)
 }
 
 trait LoadingCache[F[_], S[_, _], K, V] {
