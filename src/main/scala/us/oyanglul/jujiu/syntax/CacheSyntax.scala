@@ -14,7 +14,7 @@ trait CacheSyntax {
       dsl.fetch(k, load).run(cacheProvider)
     def fetchAllF[L[_]: Traverse](keys: L[K])(implicit M: Async[F]): F[L[Option[V]]] =
       dsl.fetchAll(keys).run(cacheProvider)
-    def parFetchAllF[L[_]: Traverse, G[_]](keys: L[K])(implicit M: Async[F], ev: Parallel[F, G]): F[L[Option[V]]] =
+    def parFetchAllF[L[_]: Traverse, G[_]](keys: L[K])(implicit M: Async[F], ev: Parallel[F]): F[L[Option[V]]] =
       dsl.parFetchAll[L, G](keys).run(cacheProvider)
     def clearF(k: K)(implicit M: Async[F]): F[Unit] =
       dsl.clear(k).run(cacheProvider)
@@ -29,7 +29,7 @@ trait LoadingCacheSyntax {
       dsl.fetch(k).run(cacheProvider)
     def fetchAllF[L[_]: Traverse](keys: L[K])(implicit M: Async[F]): F[L[V]] =
       dsl.fetchAll[L](keys).run(cacheProvider)
-    def parFetchAllF[L[_]: Traverse, G[_]](keys: L[K])(implicit M: Async[F], ev: Parallel[F, G]): F[L[V]] =
+    def parFetchAllF[L[_]: Traverse, G[_]](keys: L[K])(implicit M: Async[F], ev: Parallel[F]): F[L[V]] =
       dsl.parFetchAll[L, G](keys).run(cacheProvider)
   }
 }

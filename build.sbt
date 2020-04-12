@@ -1,4 +1,7 @@
 import Dependencies._
+lazy val scala212 = "2.12.10"
+lazy val scala213 = "2.13.1"
+lazy val supportedScalaVersions = List(scala212, scala213)
 
 inScope(Scope.GlobalScope)(
   List(
@@ -17,13 +20,15 @@ inScope(Scope.GlobalScope)(
     pgpPublicRing := file("/home/circleci/repo/.gnupg/pubring.asc"),
     pgpSecretRing := file("/home/circleci/repo/.gnupg/secring.asc"),
     releaseEarlyWith := SonatypePublisher,
-    scalaVersion := "2.12.8"
+    scalaVersion := "2.12.10"
   )
 )
 
 lazy val root = (project in file("."))
   .settings(
     name := "Jujiu",
+    scalacOptions in Test -= "-Xfatal-warnings",
+    crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++=
       cats ++
         specs2 ++
