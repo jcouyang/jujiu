@@ -28,7 +28,7 @@ trait Cache[F[_], S[_, _], K, V] {
 
   def parFetchAll[L[_]: Traverse, G[_]](
     keys: L[K]
-  )(implicit M: Async[F], ev: Parallel[F, G]): Kleisli[F, S[K, V], L[Option[V]]] =
+  )(implicit M: Async[F], ev: Parallel[F]): Kleisli[F, S[K, V], L[Option[V]]] =
     keys.parTraverse(fetch)
 
   def clear(k: K)(implicit M: Async[F]): Kleisli[F, S[K, V], Unit]
@@ -42,6 +42,6 @@ trait LoadingCache[F[_], S[_, _], K, V] {
     keys.traverse(fetch)
   def parFetchAll[L[_]: Traverse, G[_]](
     keys: L[K]
-  )(implicit M: Async[F], ev: Parallel[F, G]): Kleisli[F, S[K, V], L[V]] =
+  )(implicit M: Async[F], ev: Parallel[F]): Kleisli[F, S[K, V], L[V]] =
     keys.parTraverse(fetch)
 }

@@ -1,4 +1,7 @@
 package us.oyanglul.jujiu
+
+import us.oyanglul.jujiu.syntax.caffeine._
+import us.oyanglul.jujiu.syntax.cache._
 import cats.{Applicative}
 import cats.data.Kleisli
 import java.util.concurrent.CompletableFuture
@@ -9,7 +12,6 @@ import cats.syntax.all._
 import cats.effect._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import syntax.caffeine._
 import com.github.benmanes.caffeine.cache
 
 class JujiuSpec extends Specification with org.specs2.mock.Mockito{
@@ -47,7 +49,6 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito{
 }
 
 "works with IO" >> {
-  import syntax.cache._
   "normal cache" >> {
     val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String] {}
     implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
@@ -125,7 +126,6 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito{
 }
 
 "works with tagless final" >> {
-  import us.oyanglul.jujiu.syntax.cache._
   trait LogDsl[F[_]] {
     def log(msg: String): F[Unit]
   }

@@ -1,4 +1,6 @@
 package us.oyanglul.jujiu
+
+import us.oyanglul.jujiu.syntax.caffeine._
 import cats.effect.IO
 import com.github.benmanes.caffeine.cache
 import org.scalacheck.{Arbitrary, Gen}
@@ -6,7 +8,6 @@ import org.scalacheck.commands.Commands
 
 import scala.collection.Map
 import scala.util.{Success, Try}
-import syntax.caffeine._
 import Arbitrary._
 import cats.instances.all._
 
