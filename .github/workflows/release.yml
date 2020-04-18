@@ -33,3 +33,6 @@ jobs:
       env:
         GPG_SEC: ${{ secrets.GPG_SEC }}
         GPG_PUB: ${{ secrets.GPG_PUB }}
+        PGP_PASS: ${{ secrets.PGP_PASS }}
+        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
