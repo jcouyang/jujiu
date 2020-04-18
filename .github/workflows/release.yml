@@ -1,12 +1,12 @@
-name: Build and Test
+name: Release
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    tags:
+      - v*
 
 jobs:
-  test:
+  publish:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -24,7 +24,12 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Build
-      run: sbt +test:compile
-    - name: Test
-      run: sbt +test
+    - name: publish
+      run: |
+        mkdir -p .gnupg
+        echo $GPG_SEC | base64 --decode > .gnupg/secring.asc
+        echo $GPG_PUB | base64 --decode > .gnupg/pubring.asc
+        sbt +releaseEarly
+      with:
+        GPG_SEC: ${{ secrets.GPG_SEC }}
+        GPG_PUB: ${{ secrets.GPG_PUB }}
