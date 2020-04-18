@@ -30,6 +30,6 @@ jobs:
         echo $GPG_SEC | base64 --decode > .gnupg/secring.asc
         echo $GPG_PUB | base64 --decode > .gnupg/pubring.asc
         sbt +releaseEarly
-      with:
+      env:
         GPG_SEC: ${{ secrets.GPG_SEC }}
         GPG_PUB: ${{ secrets.GPG_PUB }}
