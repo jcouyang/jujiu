@@ -15,7 +15,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ~/.cache/coursier
-        key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/build.sbt') }}
+        key: ${{ runner.os }}-sbt-cache
     - name: Set up JDK 1.8
       uses: actions/setup-java@v1
       with:
@@ -23,10 +23,5 @@ jobs:
     - name: Build
       run: sbt test:compile
     - name: Test
-      run: |
-        ls ~/.ivy2
-        ls ~/.*
-        ls ~/.cache
-        ls ~/.cache/coursier
-        sbt +test
+      run: sbt +test
     
