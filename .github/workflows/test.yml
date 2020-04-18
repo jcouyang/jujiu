@@ -21,9 +21,12 @@ jobs:
       with:
         java-version: 1.8
     - name: Build
-      run: sbt +test:compile
+      run: sbt test:compile
     - name: Test
       run: |
+        ls ~/.ivy2
+        ls ~/.*
+        ls ~/.cache
         ls ~/.cache/coursier
         sbt +test
     
