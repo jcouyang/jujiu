@@ -17,8 +17,8 @@ inScope(Scope.GlobalScope)(
         "scm:git@github.com:jcouyang/jujiu.git"
       )
     ),
-    pgpPublicRing := file("/home/circleci/repo/.gnupg/pubring.asc"),
-    pgpSecretRing := file("/home/circleci/repo/.gnupg/secring.asc"),
+    pgpPublicRing := file(".") / ".gnupg" / "pubring.asc",
+    pgpSecretRing := file(".") / ".gnupg" / "secring.asc",
     releaseEarlyWith := SonatypePublisher,
     scalaVersion := "2.12.10"
   )
