@@ -12,9 +12,9 @@ object Dependencies {
     "com.github.ben-manes.caffeine" % "caffeine"            % "2.7.0"
   )
   lazy val specs2 = Seq(
-    "org.specs2" % "specs2-core_2.13"       % "4.8.3" % Test,
-    "org.scalacheck" % "scalacheck_2.13" % "1.14.3" % Test,
-    "org.specs2" % "specs2-mock_2.13"       % "4.8.3" % Test
+    "org.specs2" % "specs2-core_2.13"       % "4.8.3" % "it,test",
+    "org.scalacheck" % "scalacheck_2.13" % "1.14.3" % "it,test",
+    "org.specs2" % "specs2-mock_2.13"       % "4.8.3" % "it,test"
   )
 
   lazy val redis = Seq(

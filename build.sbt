@@ -20,27 +20,21 @@ inScope(Scope.GlobalScope)(
     pgpPublicRing := file(".") / ".gnupg" / "pubring.asc",
     pgpSecretRing := file(".") / ".gnupg" / "secring.asc",
     releaseEarlyWith := SonatypePublisher,
+    scalaVersion := dotty
   )
 )
 
-lazy val deps = cats ++
+val deps = cats ++
         specs2 ++
         caffeine ++
         redis
 lazy val root = (project in file("."))
+  .configs(IntegrationTest)
   .settings(
+    Defaults.itSettings,
     name := "Jujiu",
-    scalacOptions ++= Seq("-Ykind-projector","-language:implicitConversions"),
+    scalacOptions ++= Seq("-language:implicitConversions"),
     scalacOptions in Test -= "-Xfatal-warnings",
     crossScalaVersions := supportedScalaVersions,
-    scalaVersion := dotty,
-    libraryDependencies ++= deps
-  )
-
-lazy val functionalTest = (project in file("."))
-  .settings(
-    name := "Jujiu",
-    scalacOptions in Test -= "-Xfatal-warnings",
-    scalaVersion := scala213,
     libraryDependencies ++= deps
   )
