@@ -1,9 +1,10 @@
 #+HTML: <h1><ruby>雎鳩<rt>ju jiu</rt></ruby></h1>
 
 Functional Scala Caching
+
 [[https://github.com/jcouyang/jujiu/actions][https://github.com/jcouyang/jujiu/workflows/Build%20and%20Test/badge.svg]]
-[[[https://index.scala-lang.org/jcouyang/jujiu][https://index.scala-lang.org/jcouyang/jujiu/latest.svg?v=1]]
-[[https://www.javadoc.io/doc/us.oyanglul/jujiu_0.23][https://www.javadoc.io/badge/us.oyanglul/jujiu_0.23.svg?label=document]]
+[[https://index.scala-lang.org/jcouyang/jujiu][https://index.scala-lang.org/jcouyang/jujiu/latest.svg?v=1]]
+[[https://www.javadoc.io/doc/us.oyanglul/jujiu_0.23][https://www.javadoc.io/badge/us.oyanglul/jujiu_2.13.svg?label=document]]
 [[https://codecov.io/gh/jcouyang/jujiu][https://codecov.io/gh/jcouyang/jujiu/branch/master/graph/badge.svg]]
 
 #+HTML: <img src=https://upload.wikimedia.org/wikipedia/commons/7/7e/Imperial_Encyclopaedia_-_Animal_Kingdom_-_pic009_-_%E9%9B%8E%E9%B3%A9%E5%9C%96.svg width=40%/>
@@ -12,8 +13,9 @@ Functional Scala Caching
 关关雎鸠 在河之洲 *Do one thing and do it well* micro [[https://github.com/search?q=org:jcouyang+topic:birds&type=Repositories][birds library]] series
 #+END_QUOTE
 
+~val version =~ [[https://index.scala-lang.org/jcouyang/jujiu][https://index.scala-lang.org/jcouyang/jujiu/latest.svg?v=1]]
 #+BEGIN_EXAMPLE
-libraryDependencies += "us.oyanglul" %% "jujiu" % "0.2.1"
+libraryDependencies += "us.oyanglul" %% "jujiu" % version
 #+END_EXAMPLE
 
 * Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
