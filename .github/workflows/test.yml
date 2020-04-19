@@ -25,6 +25,6 @@ jobs:
       with:
         java-version: 1.8
     - name: Test
-      run: sbt "+testOnly *JujiuSpec"
+      run: sbt +test
     - name: Functional Test
-      run: sbt "testOnly *StateMachineSpec"
+      run: sbt "++ 2.13.1 -v it:test"
