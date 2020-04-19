@@ -24,7 +24,7 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Build
-      run: sbt +test:compile
     - name: Test
-      run: sbt +test
+      run: sbt "+testOnly *JujiuSpec"
+    - name: Functional Test
+      run: sbt "testOnly *StateMachineSpec"

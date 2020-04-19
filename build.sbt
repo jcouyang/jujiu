@@ -20,7 +20,6 @@ inScope(Scope.GlobalScope)(
     pgpPublicRing := file(".") / ".gnupg" / "pubring.asc",
     pgpSecretRing := file(".") / ".gnupg" / "secring.asc",
     releaseEarlyWith := SonatypePublisher,
-    scalaVersion := dotty
   )
 )
 
@@ -34,6 +33,7 @@ lazy val root = (project in file("."))
     scalacOptions ++= Seq("-Ykind-projector","-language:implicitConversions"),
     scalacOptions in Test -= "-Xfatal-warnings",
     crossScalaVersions := supportedScalaVersions,
+    scalaVersion := dotty,
     libraryDependencies ++= deps
   )
 
