@@ -10,6 +10,7 @@ import scala.compat.java8.DurationConverters.toJava
 import scala.util.{Left, Right}
 import scala.concurrent.duration._
 import cats.effect._
+import cats.syntax.functor._
 import com.github.benmanes.caffeine.cache.Caffeine
 
 trait CaffeineSyntax {
@@ -18,13 +19,13 @@ trait CaffeineSyntax {
     def apply(): Caffeine[Any, Any] = cache.Caffeine.newBuilder().asInstanceOf[cache.Caffeine[Any, Any]]
   }
   implicit class CaffeineWrapper[K, V](caf: cache.Caffeine[K, V]) {
-    def expireAfterAccess(duration: FiniteDuration): cache.Caffeine[K, V] =
+    def withExpireAfterAccess(duration: FiniteDuration): cache.Caffeine[K, V] =
       caf.expireAfterAccess(toJava(duration))
-    def expireAfterWrite(duration: FiniteDuration): cache.Caffeine[K, V] =
+    def withExpireAfterWrite(duration: FiniteDuration): cache.Caffeine[K, V] =
       caf.expireAfterWrite(toJava(duration))
-    def refreshAfterWrite(duration: FiniteDuration): cache.Caffeine[K, V] =
+    def withRefreshAfterWrite(duration: FiniteDuration): cache.Caffeine[K, V] =
       caf.refreshAfterWrite(toJava(duration))
-    def expire[KK <: K, VV <: V](
+    def withExpire[KK <: K, VV <: V](
       afterCreate: (KK, VV) => FiniteDuration,
       afterUpdate: (KK, VV, FiniteDuration) => FiniteDuration,
       afterRead: (KK, VV, FiniteDuration) => FiniteDuration
@@ -59,8 +60,8 @@ trait CaffeineSyntax {
           val p = Promise[VV]
           Effect[F]
             .runAsync(load(key)) {
-              case Right(v) => IO(p.success(v))
-              case Left(e)  => IO(p.failure(e))
+              case Right(v) => IO(p.success(v)).as(())
+              case Left(e)  => IO(p.failure(e)).as(())
             }
             .unsafeRunSync()
           toJavaFuture(p.future).toCompletableFuture

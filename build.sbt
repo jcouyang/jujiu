@@ -1,7 +1,7 @@
 import Dependencies._
-lazy val scala212 = "2.12.10"
-lazy val scala213 = "2.13.1"
-lazy val supportedScalaVersions = List(scala212, scala213)
+val dotty = "0.23.0-RC1"
+val scala213 = "2.13.1"
+lazy val supportedScalaVersions = List(dotty, scala213)
 
 inScope(Scope.GlobalScope)(
   List(
@@ -20,19 +20,27 @@ inScope(Scope.GlobalScope)(
     pgpPublicRing := file(".") / ".gnupg" / "pubring.asc",
     pgpSecretRing := file(".") / ".gnupg" / "secring.asc",
     releaseEarlyWith := SonatypePublisher,
-    scalaVersion := "2.12.10"
+    scalaVersion := dotty
   )
 )
 
+lazy val deps = cats ++
+        specs2 ++
+        caffeine ++
+        redis
 lazy val root = (project in file("."))
   .settings(
     name := "Jujiu",
+    scalacOptions ++= Seq("-Ykind-projector","-language:implicitConversions"),
     scalacOptions in Test -= "-Xfatal-warnings",
     crossScalaVersions := supportedScalaVersions,
-    libraryDependencies ++=
-      cats ++
-        specs2 ++
-        logs ++
-        caffeine ++
-        redis
+    libraryDependencies ++= deps
+  )
+
+lazy val functionalTest = (project in file("."))
+  .settings(
+    name := "Jujiu",
+    scalacOptions in Test -= "-Xfatal-warnings",
+    scalaVersion := scala213,
+    libraryDependencies ++= deps
   )

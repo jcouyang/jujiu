@@ -1,6 +1,7 @@
 package us.oyanglul.jujiu
 
 import us.oyanglul.jujiu.syntax.caffeine._
+import cats.implicits._
 import cats.effect.IO
 import com.github.benmanes.caffeine.cache
 import org.scalacheck.{Arbitrary, Gen}
@@ -9,7 +10,6 @@ import org.scalacheck.commands.Commands
 import scala.collection.Map
 import scala.util.{Success, Try}
 import Arbitrary._
-import cats.instances.all._
 
 import scala.concurrent.ExecutionContext
 
@@ -23,10 +23,12 @@ object StateMachineSpec extends org.scalacheck.Properties("Jujiu StateMachine") 
 }
 class CaffeineCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBaseSpec[K, V] {
   type Subject[A, B] = cache.Cache[A, B]
-  val dsl = new CaffeineCache[IO, K, V] {}
+  val dsl: CaffeineCache[IO, K, V] = new CaffeineCache[IO, K, V] {}
   def newSut(state: State): Sut =
     Caffeine().sync
   def destroySut(sut: Sut): Unit = sut.cleanUp()
+  def genClearAll: Gen[Command] = Gen.const(ClearAll)
+
   def genCommand(state: State): Gen[Command] =
     Gen.oneOf(
       genFetch,
@@ -37,10 +39,10 @@ class CaffeineCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBaseSpe
       genClearAll,
       genClearMany
     )
-    def genClearAll = Gen.const(ClearAll)
+
   case object ClearAll extends Command {
     type Result = Unit
-    def run(sut: Sut) = dsl.clearAll.run(sut).unsafeRunSync()
+    def run(sut: Sut) = dsl.clean.run(sut).unsafeRunSync()
     def preCondition(state: State) = true
     def nextState(state: State) = Map()
     def postCondition(state: State, result: Try[Result]) =
@@ -51,7 +53,7 @@ class CaffeineCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBaseSpe
 
 class CaffeineAsyncCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBaseSpec[K, V] {
   type Subject[A, B] = cache.AsyncCache[A, B]
-  val dsl = new CaffeineAsyncCache[IO, K, V] {
+  val dsl: CaffeineAsyncCache[IO, K, V] = new CaffeineAsyncCache[IO, K, V] {
     implicit val executionContext = ExecutionContext.global
   }
   def newSut(state: State): Sut =
@@ -80,7 +82,7 @@ class CaffeineAsyncCacheSpec[K: Arbitrary, V: Arbitrary] extends CaffeineCacheBa
   def genClearAll = Gen.const(ClearAll)
   case object ClearAll extends Command {
     type Result = Unit
-    def run(sut: Sut) = dsl.clearAll.run(sut).unsafeRunSync()
+    def run(sut: Sut) = dsl.clean.run(sut).unsafeRunSync()
     def preCondition(state: State) = true
     def nextState(state: State) = Map()
     def postCondition(state: State, result: Try[Result]) =

@@ -26,7 +26,7 @@ trait CaffeineCache[F[_], K, V] extends Cache[F, CCache, K, V] {
     Kleisli(caffeine => M.delay(Option(caffeine.getIfPresent(k))))
   def clear(k: K)(implicit M: Async[F]): Kleisli[F, CCache[K, V], Unit] =
     Kleisli(caffeine => M.delay(caffeine.invalidate(k)))
-  def clearAll(implicit M: Async[F]): Kleisli[F, CCache[K, V], Unit] =
+  def clean(implicit M: Async[F]): Kleisli[F, CCache[K, V], Unit] =
     Kleisli(caffeine => M.delay(caffeine.invalidateAll))
 }
 
@@ -48,7 +48,7 @@ trait CaffeineAsyncCache[F[_], K, V] extends Cache[F, CACache, K, V] {
     )
   def clear(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
     Kleisli(caffeine => M.delay(caffeine.synchronous().invalidate(k)))
-  def clearAll(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
+  def clean(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
     Kleisli(caffeine => M.delay(caffeine.synchronous().invalidateAll))
 }
 
