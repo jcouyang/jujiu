@@ -1,7 +1,8 @@
 import Dependencies._
-val dotty = "0.23.0-RC1"
+val dotty23 = "0.23.0-RC1"
+val dotty = "0.24.0-RC1"
 val scala213 = "2.13.1"
-lazy val supportedScalaVersions = List(dotty, scala213)
+lazy val supportedScalaVersions = List(dotty23, dotty, scala213)
 
 inScope(Scope.GlobalScope)(
   List(
