@@ -1,7 +1,0 @@
-version: 2
-updates:
-  - package-ecosystem: "maven"
-    directory: ".github/"
-    open-pull-requests-limit: 0
-    schedule:
-      interval: "weekly"
