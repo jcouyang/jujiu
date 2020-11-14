@@ -36,5 +36,5 @@ lazy val root = (project in file("."))
     scalacOptions ++= Seq("-language:implicitConversions"),
     scalacOptions in Test -= "-Xfatal-warnings",
     crossScalaVersions := supportedScalaVersions,
-    libraryDependencies ++= deps
+    libraryDependencies ++= deps.map(_.withDottyCompat(scalaVersion.value))
   )
