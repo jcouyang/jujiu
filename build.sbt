@@ -25,9 +25,9 @@ inScope(Scope.GlobalScope)(
 )
 
 val deps = cats ++
-        specs2 ++
-        caffeine ++
-        redis
+  specs2 ++
+  caffeine ++
+  redis
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(
