@@ -1,8 +1,7 @@
 import Dependencies._
-val dotty23 = "0.23.0-RC1"
-val dotty = "0.24.0-RC1"
-val scala213 = "2.13.1"
-lazy val supportedScalaVersions = List(dotty23, dotty, scala213)
+val scala3 = "3.0.0-M1"
+val scala213 = "2.13.3"
+lazy val supportedScalaVersions = List(scala3, scala213)
 
 inScope(Scope.GlobalScope)(
   List(
@@ -21,7 +20,7 @@ inScope(Scope.GlobalScope)(
     pgpPublicRing := file(".") / ".gnupg" / "pubring.asc",
     pgpSecretRing := file(".") / ".gnupg" / "secring.asc",
     releaseEarlyWith := SonatypePublisher,
-    scalaVersion := dotty
+    scalaVersion := scala3
   )
 )
 
