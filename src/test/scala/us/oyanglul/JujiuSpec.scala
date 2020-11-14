@@ -105,9 +105,7 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
     val caffeineA: com.github.benmanes.caffeine.cache.AsyncLoadingCache[Integer, String] = Caffeine()
       .executionContext(global) // <-- (ref:global)
       .withExpire( // <-- (ref:expire)
-        (_: Integer, _: String) => {
-          1.second
-        },
+        (_: Integer, _: String) => 1.second,
         (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration,
         (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration
       )
@@ -173,8 +171,8 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
     type Dsl[F[_]] = CaffeineCache[F, String, String] with LogDsl[F]
 
     // Layer 3: Business
-    def program[F[_]](dsl: Dsl[F])(
-      implicit ev: Async[F]
+    def program[F[_]](dsl: Dsl[F])(implicit
+      ev: Async[F]
     ) =
       for {
         _ <- dsl.log("something")
@@ -216,12 +214,11 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito {
       def fetch(k: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Option[String]] =
         Kleisli(redis => M.delay(Option(redis.get(k))))
       def clear(k: String)(implicit M: Async[IO]): Kleisli[IO, Jedis, Unit] =
-        Kleisli(
-          redis =>
-            M.delay {
-              redis.del(k)
-              ()
-            }
+        Kleisli(redis =>
+          M.delay {
+            redis.del(k)
+            ()
+          }
         )
     }
 
