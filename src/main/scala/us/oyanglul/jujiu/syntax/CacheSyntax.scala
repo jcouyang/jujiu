@@ -22,8 +22,8 @@ trait CacheSyntax {
 }
 
 trait LoadingCacheSyntax {
-  implicit class LoadingCachSyntax[F[_], S[_, _], K, V](dsl: LoadingCache[F, S, K, V])(
-    implicit cacheProvider: S[K, V]
+  implicit class LoadingCachSyntax[F[_], S[_, _], K, V](dsl: LoadingCache[F, S, K, V])(implicit
+    cacheProvider: S[K, V]
   ) {
     def fetchF(k: K)(implicit M: Async[F]): F[V] =
       dsl.fetch(k).run(cacheProvider)

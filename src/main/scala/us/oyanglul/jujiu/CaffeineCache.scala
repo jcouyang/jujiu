@@ -37,14 +37,13 @@ trait CaffeineAsyncCache[F[_], K, V] extends Cache[F, CACache, K, V] {
       M.delay(caffeine.put(k, CompletableFuture.completedFuture(v)))
     }
   def fetch(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Option[V]] =
-    Kleisli(
-      caffeine =>
-        M.async { cb =>
-          Option(caffeine.getIfPresent(k)).map(toScala).sequence.onComplete {
-            case Success(v) => cb(Right(v))
-            case Failure(e) => cb(Left(e))
-          }
+    Kleisli(caffeine =>
+      M.async { cb =>
+        Option(caffeine.getIfPresent(k)).map(toScala).sequence.onComplete {
+          case Success(v) => cb(Right(v))
+          case Failure(e) => cb(Left(e))
         }
+      }
     )
   def clear(k: K)(implicit M: Async[F]): Kleisli[F, CACache[K, V], Unit] =
     Kleisli(caffeine => M.delay(caffeine.synchronous().invalidate(k)))
