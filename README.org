@@ -118,7 +118,6 @@ import us.oyanglul.jujiu.syntax.cache._
 
 #+BEGIN_SRC scala :exports none
   "works with IO" >> {
-    import syntax.cache._
     "normal cache" >> {
       val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String] {}
       implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
@@ -185,7 +184,7 @@ import us.oyanglul.jujiu.syntax.caffeine._
 #+BEGIN_SRC scala
   "it should able to get and set async loading cache" >> {
     object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
-      implicit val executionContext = global          // <-- (ref:executionContext)
+      implicit val executionContext = global // <-- (ref:executionContext)
     }
 
     val program = for {
@@ -194,21 +193,19 @@ import us.oyanglul.jujiu.syntax.caffeine._
       r3 <- cache.fetchAll(List[Integer](1, 2, 3))
     } yield (r1, r2, r3)
 
-    val caffeineA = Caffeine()
-      .executionContext(global)           // <-- (ref:global)
-      .expire(                            // <-- (ref:expire)
-        (_: Integer, _: String) => {
-          1.second
-        },
+    val caffeineA: com.github.benmanes.caffeine.cache.AsyncLoadingCache[Integer, String] = Caffeine()
+      .executionContext(global) // <-- (ref:global)
+      .withExpire( // <-- (ref:expire)
+        (_: Integer, _: String) => 1.second,
         (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration,
         (_: Integer, _: String, currentDuration: FiniteDuration) => currentDuration
       )
       .async((key: Integer) => IO("async string" + key)) // <-- (ref:async)
 
     val caffeineB = Caffeine()
-      .expireAfterAccess(1.second)
-      .expireAfterWrite(2.seconds)
-      .refreshAfterWrite(3.seconds)
+      .withExpireAfterAccess(1.second)
+      .withExpireAfterWrite(2.seconds)
+      .withRefreshAfterWrite(3.seconds)
       .async((key: Integer) => IO("async string" + key))
 
     val expected = (
@@ -244,7 +241,6 @@ No matter what style of effect abstraction you project is using, Jujiu can easil
 i.e. Tagless Final
 #+BEGIN_SRC scala
   "works with tagless final" >> {
-    import us.oyanglul.jujiu.syntax.cache._
     trait LogDsl[F[_]] {
       def log(msg: String): F[Unit]
     }
