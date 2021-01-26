@@ -18,7 +18,7 @@ Functional Scala Caching
 libraryDependencies += "us.oyanglul" %% "jujiu" % version
 #+END_EXAMPLE
 
-* Scala 3^new
+* Get Started in Scala 3^{=new=}
   :PROPERTIES:
   :header-args: :tangle src/test/scala-3.0.0-M3/us/oyanglul/JujiuSpec.scala :exports code
   :CUSTOM_ID: scala-3-example
@@ -68,29 +68,40 @@ libraryDependencies += "us.oyanglul" %% "jujiu" % version
 
 * Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
   :PROPERTIES:
-  :header-args: :tangle src/test/scala/us/oyanglul/JujiuSpec.scala :exports code
+  :header-args: :tangle no :exports code
   :CUSTOM_ID: making-caffeine-cats-friendly-badge
   :END:
-#+BEGIN_SRC scala :exports none
-package us.oyanglul.jujiu
-import cats.{Applicative}
-import cats.data.Kleisli
-import java.util.concurrent.CompletableFuture
-import scala.concurrent.ExecutionContext
-import org.specs2.mutable.Specification
-import cats.instances.list._
-import cats.syntax.all._
-import cats.effect._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import syntax.caffeine._
-import com.github.benmanes.caffeine.cache
+#+BEGIN_SRC scala :exports none :noweb yes :tangle src/test/scala/us/oyanglul/JujiuSpec.scala
+  package us.oyanglul.jujiu
+  import us.oyanglul.jujiu.syntax.caffeine._
+  import us.oyanglul.jujiu.syntax.cache._
+  import cats.{Applicative}
+  import cats.data.Kleisli
+  import java.util.concurrent.CompletableFuture
+  import scala.concurrent.ExecutionContext
+  import org.specs2.mutable.Specification
+  import cats.instances.list._
+  import cats.syntax.all._
+  import cats.effect._
+  import scala.concurrent.ExecutionContext.Implicits.global
+  import scala.concurrent.duration._
+  import com.github.benmanes.caffeine.cache
+  import us.oyanglul.jujiu.syntax.CaffeineSyntax
 
-class JujiuSpec extends Specification with org.specs2.mock.Mockito{
-  implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+  class JujiuSpec extends Specification with org.specs2.mock.Mockito {
+    implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+    <<get_set_cache>>
+    <<async_load_failure>>
+    <<catsio_cache>>
+    <<catsio_loading_cache>>
+    <<caffeine_builder>>
+    <<tagless_final>>
+    <<readerT>>
+    <<redis>>
+  }
 #+END_SRC
 
-#+BEGIN_SRC scala -r -n
+#+BEGIN_SRC scala -n :noweb-ref get_set_cache
   "it should able to get and set cache" >> {
     object cacheDsl extends CaffeineCache[IO, String, String]   // <- (ref:dsl)
     val program = for {
@@ -106,23 +117,23 @@ class JujiuSpec extends Specification with org.specs2.mock.Mockito{
   }
 #+END_SRC
 
-#+BEGIN_SRC scala :exports none
-  "it should IO error when async load failure" >> {
-    object dsl extends CaffeineAsyncCache[IO, String, String] {
-      implicit val executionContext = global
+#+BEGIN_SRC scala :exports none :noweb-ref async_load_failure
+    "it should IO error when async load failure" >> {
+      object dsl extends CaffeineAsyncCache[IO, String, String] {
+        implicit val executionContext = global
+      }
+      val program = for {
+        r1 <- dsl.fetch("not exist yet")
+        r2 <- dsl.fetch("not exist yet", _ => IO("default"))
+      } yield (r1, r2)
+  
+      val failCache = mock[cache.AsyncCache[String, String]]
+      failCache.getIfPresent("not exist yet") returns CompletableFuture.supplyAsync(() => IO.raiseError[String](new Exception("cache load error")).unsafeRunSync())
+  
+      program(
+        failCache
+      ).unsafeRunSync() must throwA[Exception](message = "cache load error")
     }
-    val program = for {
-      r1 <- dsl.fetch("not exist yet")
-      r2 <- dsl.fetch("not exist yet", _ => IO("default"))
-    } yield (r1, r2)
-
-    val failCache = mock[cache.AsyncCache[String, String]]
-    failCache.getIfPresent("not exist yet") returns CompletableFuture.supplyAsync(() => IO.raiseError[String](new Exception("cache load error")).unsafeRunSync())
-
-    program(
-      failCache
-    ).unsafeRunSync() must throwA[Exception](message = "cache load error")
-  }
 #+END_SRC
 
 #+BEGIN_QUOTE
@@ -164,7 +175,7 @@ what you'll need to import some syntax
 import us.oyanglul.jujiu.syntax.cache._
 #+END_SRC
 
-#+BEGIN_SRC scala :exports none
+#+BEGIN_SRC scala :exports none :noweb-ref catsio_cache
   "works with IO" >> {
     "normal cache" >> {
       val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String] {}
@@ -194,7 +205,7 @@ import us.oyanglul.jujiu.syntax.cache._
 and provide =cacheProvider= implicitly, since you are not using Kleisli, you need to tell what cache
 these DSLs will run on
 
-#+BEGIN_SRC scala
+#+BEGIN_SRC scala :noweb-ref catsio_loading_cache
     "loading cache" >> {
       val c: LoadingCache[IO, cache.LoadingCache, String, String] = new CaffeineLoadingCache[IO, String, String] {}
       implicit val cacheProvider: cache.LoadingCache[String, String] = Caffeine().sync(identity)
@@ -229,7 +240,7 @@ First you will need caffeine builder syntax
 import us.oyanglul.jujiu.syntax.caffeine._
 #+END_SRC
 
-#+BEGIN_SRC scala
+#+BEGIN_SRC scala :noweb-ref caffeine_builder
   "it should able to get and set async loading cache" >> {
     object cache extends CaffeineAsyncLoadingCache[IO, Integer, String] {
       implicit val executionContext = global // <-- (ref:executionContext)
@@ -287,7 +298,7 @@ import us.oyanglul.jujiu.syntax.caffeine._
 No matter what style of effect abstraction you project is using, Jujiu can easily fit in
 
 i.e. Tagless Final
-#+BEGIN_SRC scala
+#+BEGIN_SRC scala :noweb-ref tagless_final
   "works with tagless final" >> {
     trait LogDsl[F[_]] {
       def log(msg: String): F[Unit]
@@ -304,7 +315,7 @@ i.e. Tagless Final
 
     {
       object dsl extends CaffeineCache[IO, String, String] with LogDsl[IO] {
-        def log(msg: String) = IO(org.log4s.getLogger.info(msg))
+        def log(msg: String) = IO(println(msg))
       }
 
       implicit val cacheProvider: cache.Cache[String, String] = Caffeine().sync[String, String]
@@ -318,11 +329,11 @@ just =extends CaffeineCache[F, K, V]= and provide =cacheProvider=
 
 ** ReaderT Pattern
 if your code is in ReaderT pattern, good, it will fit in more naturally
-#+BEGIN_SRC scala
+#+BEGIN_SRC scala :noweb-ref readerT
   "works with tagless final style readerT" >> {
     // Layer 1: Environment
     trait HasLogger {
-      def logger: org.log4s.Logger
+      def logger: String => Unit
     }
     trait HasCacheProvider {
       def cacheProvider: cache.Cache[String, String]
@@ -332,7 +343,7 @@ if your code is in ReaderT pattern, good, it will fit in more naturally
 
     // Layer 2: DSL
     trait LogDsl[F[_]] {
-      def log(msg: String)(implicit M: Applicative[F]): Kleisli[F, Env, Unit] = Kleisli(a => M.pure(a.logger.info(msg)))
+      def log(msg: String)(implicit M: Applicative[F]): Kleisli[F, Env, Unit] = Kleisli(a => M.pure(a.logger(msg)))
     }
 
     type Dsl[F[_]] = CaffeineCache[F, String, String] with LogDsl[F]
@@ -350,7 +361,7 @@ if your code is in ReaderT pattern, good, it will fit in more naturally
 
     program[IO](dsl)
       .run(new HasLogger with HasCacheProvider {
-        def logger = org.log4s.getLogger
+        def logger = println
         def cacheProvider = Caffeine().sync
       })
       .unsafeRunSync() must_== None
@@ -362,7 +373,7 @@ notice that proper contravariant adapt need =.local[Env](_.cacheProvider)=
 ** Extensible
 it's extensible by design as Kleisli, if you provider another cache provider, the same dsl
 will work.
-#+BEGIN_SRC scala
+#+BEGIN_SRC scala :noweb-ref redis
   "run on redis" >> {
     import redis.clients.jedis._
 
@@ -397,8 +408,4 @@ will work.
        new Jedis("localhost")
     ).unsafeRunSync() must_== ((None, "default", Some("now exist"), None))
   }.pendingUntilFixed("Redis")
-#+END_SRC
-
-#+BEGIN_SRC scala :exports none
-}
 #+END_SRC
