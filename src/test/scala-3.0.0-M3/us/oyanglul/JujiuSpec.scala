@@ -7,12 +7,12 @@ import org.specs2.mutable.Specification
 import cats.effect._
 import com.github.benmanes.caffeine.cache
 
-class JujiuScala3Spec extends Specification with org.specs2.mock.Mockito:
+class JujiuScala3Spec extends Specification:
   given ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   "works with IO" >> {
     "normal cache" >> {
       val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String]{}
-      
+
       def program =
         for
           _ <- IO(println("something"))
@@ -34,22 +34,5 @@ class JujiuScala3Spec extends Specification with org.specs2.mock.Mockito:
         )
       )
     }
-
-    "loading cache" >> {
-      val c: LoadingCache[IO, cache.LoadingCache, String, String] =
-        new CaffeineLoadingCache[IO, String, String] {}
-      
-      def program =
-        for
-          _ <- IO(println("something"))
-          r1 <- c.fetchF("1")
-          r2 <- c.fetchAllF(List("2", "3"))
-          r3 <- c.parFetchAllF[List, IO.Par](List("4", "5"))
-        yield (r1, r2, r3)
-
-      given cache.LoadingCache[String, String] = Caffeine().sync(identity)
-      program.unsafeRunSync() must_== (("1", List("2", "3"), List("4", "5")))
-    }
   }
-
 end JujiuScala3Spec
