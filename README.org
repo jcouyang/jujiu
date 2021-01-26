@@ -10,7 +10,7 @@ Functional Scala Caching
 #+HTML: <img src=https://upload.wikimedia.org/wikipedia/commons/7/7e/Imperial_Encyclopaedia_-_Animal_Kingdom_-_pic009_-_%E9%9B%8E%E9%B3%A9%E5%9C%96.svg width=40%/>
 
 #+BEGIN_QUOTE
-关关雎鸠 在河之洲 *Do one thing and do it well* micro [[https://github.com/search?q=org:jcouyang+topic:birds&type=Repositories][birds library]] series
+*Do one thing and do it well* micro [[https://github.com/search?q=org:jcouyang+topic:birds&type=Repositories][birds library]] series
 #+END_QUOTE
 
 ~val version =~ [[https://index.scala-lang.org/jcouyang/jujiu][https://index.scala-lang.org/jcouyang/jujiu/latest.svg?v=1]]
@@ -18,7 +18,7 @@ Functional Scala Caching
 libraryDependencies += "us.oyanglul" %% "jujiu" % version
 #+END_EXAMPLE
 
-* Get Started in Scala 3^{=new=}
+* Quick Started in Scala 3^{=new=}
   :PROPERTIES:
   :header-args: :tangle src/test/scala-3.0.0-M3/us/oyanglul/JujiuSpec.scala :exports code
   :CUSTOM_ID: scala-3-example
@@ -34,22 +34,27 @@ libraryDependencies += "us.oyanglul" %% "jujiu" % version
     import com.github.benmanes.caffeine.cache
   #+end_src
 
+  There are only two simple steps to use cache:
+1. Initiate a protocol-agnostic Cache DSL, which means the DSL only aware of what to operate, not how to
+2. using the DSL syntax =fetchF=, =parFetchAllF= etc to describe how to use the Cache in the program
+3. =given= a instance of =Cache[Key, Val]=, in the example we created a Caffeine instance, which tells *how* exactly how to actually do the cache.
+
   #+begin_src scala
     class JujiuScala3Spec extends Specification:
       given ContextShift[IO] = IO.contextShift(ExecutionContext.global)
       "works with IO" >> {
         "normal cache" >> {
-          val c: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String]{}
+          val dsl: Cache[IO, cache.Cache, String, String] = new CaffeineCache[IO, String, String]{}
 
-          def program =
+          def program(using cache.Cache[String, String]) =
             for
               _ <- IO(println("something"))
-              _ <- c.putF("key1", "value1")
-              r1 <- c.fetchF("key1")
-              r2 <- c.fetchF("key2", _ => IO("value2"))
-              r3 <- c.fetchAllF(List("key1", "key2"))
-              r4 <- c.parFetchAllF[List, IO.Par](List("key1", "key2"))
-              _ <- c.clearF("key1")
+              _ <- dsl.putF("key1", "value1")
+              r1 <- dsl.fetchF("key1")
+              r2 <- dsl.fetchF("key2", _ => IO("value2"))
+              r3 <- dsl.fetchAllF(List("key1", "key2"))
+              r4 <- dsl.parFetchAllF[List, IO.Par](List("key1", "key2"))
+              _ <- dsl.clearF("key1")
             yield (r1, r2, r3, r4)
 
           given cache.Cache[String, String] = Caffeine().sync[String, String]
@@ -66,7 +71,7 @@ libraryDependencies += "us.oyanglul" %% "jujiu" % version
     end JujiuScala3Spec
   #+end_src
 
-* Making [[https://github.com/ben-manes/caffeine][Caffeine ]][[https://typelevel.org/cats/img/cats-badge-tiny.png]]
+* [[https://typelevel.org/cats/img/cats-badge-tiny.png]] [[https://github.com/ben-manes/caffeine][Caffeine]]
   :PROPERTIES:
   :header-args: :tangle no :exports code
   :CUSTOM_ID: making-caffeine-cats-friendly-badge
@@ -164,7 +169,7 @@ I can walk you through line by line though
   effects you described before in =program= will be triggered\\
   and you will get the actual result
 
-** and Cats IO
+** works with Cats IO
    :PROPERTIES:
    :CUSTOM_ID: and-cats-io
    :END:
@@ -226,7 +231,7 @@ similar to =ExecutionContext=, you need to provide context the thread can run on
 #+END_QUOTE
 
 and all dsl suffix with =F=
-** and Caffeine builder
+** idiomatic syntax for Caffeine builder
 
 Dealing with Java DSL and Java Future is too verbose and painful in
 Scala project
@@ -286,7 +291,7 @@ import us.oyanglul.jujiu.syntax.caffeine._
   execution context as default to execute java future, otherwise its default java folk join pool.
   alternatively you can also use Akka's execution context.
 
-- [[(expire)][line-(expire)]] default the expiring policy, here it's more Scala way using
+- [[(expire)][line-(expire)]] default the expiring policy, here it's more Scala idiomatic
   lambda and =Duration=
 
 - [[(async)][line-(async)]] will create an
