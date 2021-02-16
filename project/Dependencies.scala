@@ -13,7 +13,7 @@ object Dependencies {
   )
   lazy val specs2 = Seq(
     "org.specs2"     %% "specs2-core" % "4.10.6"  % "it,test",
-    "org.scalacheck" %% "scalacheck"  % "1.15.2" % "it,test",
+    "org.scalacheck" %% "scalacheck"  % "1.15.3" % "it,test",
     "org.specs2"     %% "specs2-mock" % "4.10.6"  % "it,test"
   )
 
