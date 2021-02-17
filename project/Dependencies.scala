@@ -4,7 +4,7 @@ object Dependencies {
 
   lazy val cats = Seq(
     "org.typelevel" %% "cats-core"   % "2.1.0",
-    "org.typelevel" %% "cats-effect" % "2.3.1"
+    "org.typelevel" %% "cats-effect" % "2.3.3"
   )
 
   lazy val caffeine = Seq(
