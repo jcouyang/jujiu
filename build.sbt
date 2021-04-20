@@ -1,5 +1,5 @@
 import Dependencies._
-val scala3 = "3.0.0-M3"
+val scala3 = "3.0.0-RC2"
 val scala213 = "2.13.5"
 lazy val supportedScalaVersions = List(scala3, scala213)
 
@@ -24,17 +24,16 @@ inScope(Scope.GlobalScope)(
   )
 )
 
-val deps = cats ++
-  specs2 ++
-  caffeine ++
-  redis
+val deps = cats ++ javaCompat ++ specs2
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(
     Defaults.itSettings,
     name := "Jujiu",
     scalacOptions ++= Seq("-language:implicitConversions"),
-    scalacOptions in Test -= "-Xfatal-warnings",
+    Test / scalacOptions -= "-Xfatal-warnings",
     crossScalaVersions := supportedScalaVersions,
-    libraryDependencies ++= deps.map(_.withDottyCompat(scalaVersion.value))
+    libraryDependencies ++= deps.map(_.cross(CrossVersion.for3Use2_13)) ++
+      caffeine ++
+      redis
   )
