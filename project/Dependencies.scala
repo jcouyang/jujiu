@@ -20,7 +20,7 @@ object Dependencies {
   )
 
   lazy val redis = Seq(
-    "redis.clients" % "jedis" % "3.6.2" % Test
+    "redis.clients" % "jedis" % "3.6.3" % Test
   )
 
   lazy val logs = Seq(
