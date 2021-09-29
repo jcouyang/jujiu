@@ -8,7 +8,7 @@ object Dependencies {
   )
 
   lazy val javaCompat = Seq(
-    "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.0"
+    "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1"
   )
   lazy val caffeine = Seq(
     "com.github.ben-manes.caffeine" % "caffeine" % "2.9.2"
