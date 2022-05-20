@@ -4,7 +4,7 @@ object Dependencies {
 
   lazy val cats = Seq(
     "org.typelevel" %% "cats-core"   % "2.1.0",
-    "org.typelevel" %% "cats-effect" % "2.5.4"
+    "org.typelevel" %% "cats-effect" % "2.5.5"
   )
 
   lazy val javaCompat = Seq(
@@ -15,12 +15,12 @@ object Dependencies {
   )
   lazy val specs2 = Seq(
     "org.specs2"     %% "specs2-core" % "4.15.0" % "it,test",
-    "org.scalacheck" %% "scalacheck"  % "1.15.4" % "it,test",
+    "org.scalacheck" %% "scalacheck"  % "1.16.0" % "it,test",
     "org.specs2"     %% "specs2-mock" % "4.15.0" % "it,test"
   )
 
   lazy val redis = Seq(
-    "redis.clients" % "jedis" % "4.2.1" % Test
+    "redis.clients" % "jedis" % "4.2.3" % Test
   )
 
   lazy val logs = Seq(
